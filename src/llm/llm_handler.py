@@ -8,7 +8,7 @@ class LLMHandler:
         self, query, retrieved_memories):
         memory_context = ""
         for memory in retrieved_memories:
-            memory_content += f"- {memory}\n"
+            memory_context += f"- {memory}\n"
         prompt = f"""
         You are an AI assistant.
 

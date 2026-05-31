@@ -2,3 +2,5 @@ chromadb
 sentence-transformers
 requests
 pytest
+ollama
+

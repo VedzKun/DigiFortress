@@ -12,7 +12,7 @@ class MemoryManager:
             name = "agent_memory"
         )
     def add_memory(self, text, embedding, source="user"):
-        memory_id = str(uuid.uuid64())
+        memory_id = str(uuid.uuid4())
         self.collection.add(
             ids = [memory_id],
             embeddings=[embedding],
