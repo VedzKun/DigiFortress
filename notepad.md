@@ -36,3 +36,5 @@ Git + GitHub
 ✓ Memory Inspection
 
 ✓ Basic Testing
+
+![ARCHITECTURE](C:\Users\HP\DigiFortress\arch\Untitled-2025-03-13-0013.png)
