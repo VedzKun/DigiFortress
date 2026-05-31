@@ -1,27 +1,33 @@
 # DigiFortress
 DigiFortress/
-├── digifortress_env/          # (your virtual environment)
+├── venv/                       # (your virtual environment)
 ├── src/
-│   ├── __init__.py
-│   ├── core/                  # Core logic
-│   │   ├── agent.py
-│   │   ├── memory.py
-│   │   └── defense.py
-│   ├── attacks/               # Poisoning attack simulations
-│   ├── defenses/              # Defense mechanisms
+│   ├── agent/
+│   │   ├── __init__.py
+│   │   └── agent.py
+│   ├── memory/
+│   │   ├── __init__.py
+│   │   └── memory_manager.py
+│   ├── embeddings/
+│   │   ├── __init__.py
+│   │   └── embedder.py
+│   ├── llm/
+│   │   ├── __init__.py
+│   │   └── llm_handler.py
 │   └── utils/
+│       └── helpers.py
+├── data/
+│   └── chroma_db/              # Chroma DB persistent storage
 ├── tests/
+│   └── test_memory.py
 ├── docs/
-│   ├── architecture.md
 │   ├── project_charter.md
-│   └── threat_model.md
-├── experiments/               # Jupyter notebooks for testing
-├── notebooks/
-├── data/                      # For memory database (will be created later)
+│   └── phase1_design.md
 ├── requirements.txt
 ├── README.md
 ├── .gitignore
-└── LICENSE
+└── main.py
+
 
 Architecture Basic
 
