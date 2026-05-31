@@ -11,14 +11,14 @@ class MemoryManager:
         self.collection = self.client.get_or_create_collection(
             name = "agent_memory"
         )
-    def add_memory(self, text, embedding, source="user"):
+    def add_memory(self, text, embedding, category, source="user"):
         memory_id = str(uuid.uuid4())
         self.collection.add(
             ids = [memory_id],
             embeddings=[embedding],
             documents=[text],
             metadatas=[
-                {"source": source, "timestamp": str(datetime.now())}
+                {"source": source, "timestamp": str(datetime.now()), "category": category}
             ]
         )
         return memory_id

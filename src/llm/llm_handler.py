@@ -5,21 +5,27 @@ class LLMHandler:
     def __init__(self):
         self.model = "qwen2.5:7b"
     def generate_response(
-        self, query, retrieved_memories):
+        self, query, retrieved_memories, conversation_history):
         memory_context = ""
         for memory in retrieved_memories:
             memory_context += f"- {memory}\n"
         prompt = f"""
-        You are an AI assistant.
+        You are DigiFortress.
 
-        Relevant memories:
+        Conversation History:
+
+        {conversation_history}
+
+        Retrieved Memories:
 
         {memory_context}
 
         User Query:
         {query}
 
-        Answer using the memories whenever relevant.
+        Reason carefully.
+
+        Use memory only if relevant.
         """
         response = ollama.chat(
             model=self.model,
