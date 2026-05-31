@@ -132,19 +132,16 @@ class Agent:
             query_embedding = (
                 self.embedder.generate_embedding(
                     query
-                )
-            )
+                ))
 
             retrieved = (
                 self.memory.retrieve_memory(
                     query_embedding
-                )
-            )
-
-            memories = (
-                retrieved["documents"][0]
-            )
-
+                ))
+            memory_docs = retrieved["documents"][0]
+            memory_ids = retrieved["ids"][0]
+            for memory_id in memory_ids:
+                self.security_db.update_access(memory_id)
         conversation_history = self.conversation.get_history()
         response = self.llm.generate_response(
             query=query,

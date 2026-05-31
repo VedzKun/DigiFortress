@@ -15,7 +15,7 @@ class Validator:
         )
         status = "accepted"
         reason = None
-        if trust_score < 0.4:
+        if trust_score <= 0.4:
             status = "quarantined"
             reason = "low_trust"
         elif conflict:

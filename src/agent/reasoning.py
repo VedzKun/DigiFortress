@@ -13,6 +13,7 @@ class ReasoningLayer:
             "where am i",
             "what do",
             "what is"
+            "what language"
         ]
         for word in keywords:
             if word in query:

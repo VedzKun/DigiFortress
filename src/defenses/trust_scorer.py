@@ -15,7 +15,8 @@ class TrustScorer:
             "transfer funds",
             "attacker",
             "ignore instructions",
-            "bypass"
+            "bypass",
+            "transfer money"
         ]
         content_lower = content.lower()
         for keyword in suspicious_keywords:
