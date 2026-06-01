@@ -21,11 +21,7 @@ class Agent:
         self.quarantine = QuarantineManager()
         self.security_db = SecurityDB()
 
-    def remember(
-    self,
-    text,
-    source="user"
-    ):
+    def remember(self,text,source="user"):
         print("\n[STEP 1] Generating embedding...")
         embedding = self.embedder.generate_embedding(
             text
@@ -39,23 +35,13 @@ class Agent:
         if related_memories["documents"]:
             related_docs = related_memories["documents"][0]
         print("[STEP 3] Running security validation...")
-        validation = self.validator.validate(
-            memory=text,
-            related_memories=related_docs,
-            source=source
-        )
+        validation = self.validator.validate(memory=text,related_memories=related_docs,source=source)
         trust_score = validation["trust_score"]
         status = validation["status"]
         reason = validation["reason"]
-        print(
-            f"Trust Score: {trust_score}"
-        )
-        print(
-            f"Status: {status}"
-        )
-        category = self.classifier.classify(
-            text
-        )
+        print(f"Trust Score: {trust_score}")
+        print(f"Status: {status}")
+        category = self.classifier.classify(text)
         timestamp = str(datetime.now())
         if status == "accepted":
             memory_id = self.memory.add_memory(
@@ -72,13 +58,8 @@ class Agent:
                 source=source,
                 timestamp=timestamp
             )
-            print(
-                "\nMemory Accepted."
-            )
-            return {
-                "memory_id": memory_id,
-                "status": status
-            }
+            print("\nMemory Accepted.")
+            return {"memory_id": memory_id,"status": status}
         elif status == "conflict":
             memory_id = self.memory.add_memory(
                 text=text,
@@ -94,33 +75,14 @@ class Agent:
                 source=source,
                 timestamp=timestamp
             )
-            print(
-                "\nConflict Detected."
-            )
-            return {
-                "memory_id": memory_id,
-                "status": status
-            }
+            print("\nConflict Detected.")
+            return {"memory_id": memory_id,"status": status}
         elif status == "quarantined":
-            self.quarantine.quarantine_memory(
-                content=text,
-                reason=reason
-            )
-            print(
-                "\nMemory Quarantined."
-            )
-            return {
-                "memory_id": None,
-                "status": status
-            }
-
+            self.quarantine.quarantine_memory(content=text,reason=reason)
+            print("\nMemory Quarantined.")
+            return {"memory_id": None,"status": status}
     def ask(self, query):
-
-        self.conversation.add_messages(
-            "user",
-            query
-        )
-
+        self.conversation.add_messages("user",query)
         use_memory = self.reasoning.requires_memory(query)
         memories = []
         if use_memory:
@@ -137,10 +99,6 @@ class Agent:
             )
             memories = retrieved["documents"][0]
             memory_ids = retrieved["ids"][0]
-            print("\n=== RETRIEVED MEMORIES ===")
-            for memory in memories:
-                print(memory)
-            print("=========================\n")
         for memory_id in memory_ids:
             self.security_db.update_access(memory_id)
         conversation_history = self.conversation.get_history()

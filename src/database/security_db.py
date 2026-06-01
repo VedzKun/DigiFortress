@@ -19,8 +19,8 @@ class SecurityDB:
             timestamp TEXT NOT NULL,
             access_count INTEGER DEFAULT 0,
             last_accessed TEXT,
-            reputation REAL DEFAULT 0.0
-
+            reputation REAL DEFAULT 0.0,
+            decay_score REAL DEFAULT 1.0
         )
         """)
         self.conn.commit()
@@ -34,6 +34,7 @@ class SecurityDB:
         timestamp
     ):
         reputation = trust_score
+        decay_score=1.0
         self.cursor.execute("""
         INSERT INTO memories(
             memory_id,
@@ -44,10 +45,10 @@ class SecurityDB:
             timestamp,
             access_count,
             last_accessed,
-            reputation
-
+            reputation,
+            decay_score
         )
-        VALUES (?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
         """,
         (
             memory_id,
@@ -58,7 +59,8 @@ class SecurityDB:
             timestamp,
             0,
             None,
-            reputation
+            reputation,
+            decay_score
         ))
         self.conn.commit()
     def update_access(
@@ -79,49 +81,42 @@ class SecurityDB:
         ))
         self.conn.commit()
         self.update_reputation(memory_id)
-    def update_reputation(
-        self,
-        memory_id
-    ):
+        
+    def calculate_decay(self,timestamp):
+        created_time = datetime.fromisoformat(timestamp)
+        age_days = (datetime.now() - created_time).days
+        decay = max(0.3,1 - (age_days * 0.01))
+        return decay
+    def update_reputation(self, memory_id):
         self.cursor.execute("""
         SELECT
         trust_score,
-        access_count
+        access_count,
+        timestamp
         FROM memories
         WHERE memory_id = ?
-        """,
-        (memory_id,)
-        )
+        """,(memory_id,))
         row = self.cursor.fetchone()
         if not row:
             return
         trust_score = row[0]
         access_count = row[1]
-        reputation = min(
-            1.0,
-            trust_score + (access_count * 0.01)
-        )
+        timestamp = row[2]
+        decay_score = self.calculate_decay(timestamp)
+        reputation = min(1.0,(trust_score * 0.5)+(decay_score * 0.3)+(min(access_count * 0.01,0.2)))
         self.cursor.execute("""
         UPDATE memories
-        SET reputation = ?
+        SET
+        reputation = ?,
+        decay_score = ?
         WHERE memory_id = ?
-        """,
-        (
-            reputation,
-            memory_id
-        ))
-
+        """,(reputation,decay_score,memory_id))
         self.conn.commit()
-    def get_memory(
-        self,
-        memory_id
-    ):
 
+    def get_memory(self,memory_id):
         self.cursor.execute("""
         SELECT *
-
         FROM memories
-
         WHERE memory_id = ?
         """,
         (memory_id,)
@@ -158,6 +153,7 @@ class SecurityDB:
         trust_score,
         access_count,
         reputation,
+        decay_score
         last_accessed
         FROM memories
         ORDER BY reputation DESC
