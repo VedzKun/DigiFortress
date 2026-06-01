@@ -8,6 +8,7 @@ class SecurityDB:
         )
         self.cursor = self.conn.cursor()
         self.create_tables()
+        self.initialise_metrics()
     def create_tables(self):
         self.cursor.execute("""
         CREATE TABLE IF NOT EXISTS memories(
@@ -23,7 +24,22 @@ class SecurityDB:
             decay_score REAL DEFAULT 1.0
         )
         """)
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS metrics(
+            metric_name TEXT PRIMARY KEY,
+            metric_value INTEGER
+        )
+        """)
         self.conn.commit()
+    def initialise_metrics(self):
+        metrics = ["accepted","conflict","quarantined","attack_attempts"]
+        for metric in  metrics:
+            self.cursor.execute("""
+            INSERT OR IGNORE INTO metrics(
+            metric_name, metric_value)
+            VALUES(?,?)""",(metric,0))
+        self.conn.commit()
+        
     def add_memory(
         self,
         memory_id,
@@ -172,3 +188,28 @@ class SecurityDB:
         self.conn.commit()
     def close(self):
         self.conn.close()
+    def increment_metric(self, metric_name):
+        self.cursor.execute("""
+            UPDATE metrics
+            SET metric_value =
+            metric_value + 1
+            WHERE metric_name = ?
+            """,(metric_name,))
+        self.conn.commit()
+    def get_metric(self,metric_name):
+        self.cursor.execute("""
+        SELECT metric_value
+        FROM metrics
+        WHERE metric_name = ?
+        """,
+        (metric_name,)
+        )
+        row = self.cursor.fetchone()
+        if row:
+            return row[0]
+        return 0
+    def get_all_metrics(self):
+        self.cursor.execute("""
+        SELECT *
+        FROM metrics""")
+        return self.cursor.fetchall()
