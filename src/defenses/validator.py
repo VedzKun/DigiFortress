@@ -3,11 +3,12 @@ from src.defenses import llm_trust_scorer
 from src.defenses.trust_scorer import TrustScorer
 from src.defenses.conflict_detector import ConflictDetector
 from src.defenses.llm_trust_scorer import LLMTrustScorer
+from src.defenses.llm_conflict_detector import LLMConflictDetector
 class Validator:
     def __init__(self):
         self.trust = TrustScorer()
-        self.conflict = ConflictDetector()
         self.llm_trust=LLMTrustScorer()
+        self.llm_conflict = LLMConflictDetector()
     def validate(self, memory, related_memories, source):
         rule_score=self.trust.score(memory,source)
         llm_score=self.llm_trust.scores(memory)
@@ -18,9 +19,16 @@ class Validator:
         print(f"LLM Score: {llm_score}")
         print(f"Final Score: {trust_score}")
         print("==========================\n")
-        conflict = self.conflict.detect(
-            memory, related_memories
-        )
+        conflict = False
+        for existing_memory in related_memories:
+            print("\n===== CONFLICT CHECK =====")
+            print(f"New Memory: {memory}")
+            print(f"Existing Memory: {existing_memory}")
+            if self.llm_conflict.detect(memory, existing_memory):
+                conflict =True
+                break
+            print(f"Conflict: {conflict}")
+            print("==========================\n")
         status = "accepted"
         reason = None
         if trust_score <= 0.4:
