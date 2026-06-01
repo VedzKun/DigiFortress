@@ -27,6 +27,9 @@ class LLMHandler:
 
         Use memory only if relevant.
         """
+        print("\n========== PROMPT SENT TO LLM ==========")
+        print(prompt)
+        print("========================================\n")
         response = ollama.chat(
             model=self.model,
             messages = [{

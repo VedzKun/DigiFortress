@@ -11,7 +11,7 @@ class ReasoningLayer:
             "i like",
             "who am i",
             "where am i",
-            "what do",
+            "what do i",
             "what is"
             "what language"
         ]
