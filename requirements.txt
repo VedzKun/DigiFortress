@@ -3,4 +3,5 @@ sentence-transformers
 requests
 pytest
 ollama
-
+streamlit
+plotly

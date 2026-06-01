@@ -4,7 +4,8 @@ from datetime import datetime
 class SecurityDB:
     def __init__(self):
         self.conn = sqlite3.connect(
-            "data/security.db"
+            "data/security.db",
+            check_same_thread=False
         )
         self.cursor = self.conn.cursor()
         self.create_tables()
