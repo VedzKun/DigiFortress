@@ -14,7 +14,8 @@ class Validator:
     def validate(self, memory, related_memories, source):
         rule_score=self.trust.score(memory,source)
         llm_score=self.llm_trust.scores(memory)
-        trust_score=((rule_score*0.4)+(llm_score*0.6))
+        source_rep = self.security_db.get_source_reputation(source)
+        trust_score=((rule_score*0.3)+(llm_score*0.5)+(source_rep*0.2))
         print("\n===== TRUST ANALYSIS =====")
         print(f"Memory: {memory}")
         print(f"Rule Score: {rule_score}")
@@ -22,15 +23,7 @@ class Validator:
         print(f"Final Score: {trust_score}")
         print("==========================\n")
         conflict = False
-        for existing_memory in related_memories:
-            print("\n===== CONFLICT CHECK =====")
-            print(f"New Memory: {memory}")
-            print(f"Existing Memory: {existing_memory}")
-            if self.llm_conflict.detect(memory, existing_memory):
-                conflict =True
-                break
-            print(f"Conflict: {conflict}")
-            print("==========================\n")
+        
         status = "accepted"
         reason = None
         if trust_score < 0.4:
@@ -42,6 +35,7 @@ class Validator:
         else:
             status = "accepted"
             self.security_db.increment_metric("accepted")
+        self.security_db.update_source_reputation(source, status)
         return {
             "trust_score": trust_score,
             "status": status,

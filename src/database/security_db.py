@@ -1,3 +1,4 @@
+from streamlit.elements import arrow
 import sqlite3
 from datetime import datetime
 
@@ -31,7 +32,65 @@ class SecurityDB:
             metric_value INTEGER
         )
         """)
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sources(
+            source_name TEXT PRIMARY KEY,
+            reputation REAL DEFAULT 0.5,
+            accepted_count INTEGER DEFAULT 0,
+            conflict_count INTEGER DEFAULT 0,
+            quarantined_count INTEGER DEFAULT 0
+        )""")
         self.conn.commit()
+    
+    def add_sources(self, source_name):
+        self.cursor.execute("""
+        INSERT OR IGNORE INTO sources(source_name,reputation)VALUES (?,?)""",(source_name,0.5))
+        self.conn.commit()
+
+    def get_source_reputation(self, source_name):
+        self.cursor.execute("""
+            SELECT reputation FROM sources 
+            WHERE source_name = ?""",(source_name,))
+        row = self.cursor.fetchone()
+        if row:
+            return row[0]
+        return 0.5
+
+    def update_source_reputation(self,source_name,status):
+        self.add_sources(source_name)
+        self.cursor.execute("""
+        SELECT reputation,accepted_count,conflict_count,quarantined_count FROM sources WHERE source_name = ?
+        """,(source_name,))
+        row = self.cursor.fetchone()
+        reputation = row[0]
+        accepted = row[1]
+        conflict = row[2]
+        quarantined = row[3]
+        if status == "accepted":
+            reputation += 0.05
+            accepted += 1
+        elif status == "conflict":
+            reputation -= 0.03
+            conflict += 1
+        elif status == "quarantined":
+            reputation -= 0.10
+            quarantined += 1
+        reputation = max(0.0,min(1.0,reputation))
+
+        self.cursor.execute("""
+        UPDATE sources
+        SET reputation = ?,accepted_count = ?,conflict_count = ?,quarantined_count = ?
+        WHERE source_name = ?
+        """,(reputation,accepted,conflict,quarantined,source_name))
+        self.conn.commit()
+    def get_all_sources(self):
+        self.cursor.execute("""
+        SELECT *
+        FROM sources
+        ORDER BY reputation DESC
+        """)
+        return self.cursor.fetchall()
+    
     def initialise_metrics(self):
         metrics = ["accepted","conflict","quarantined","attack_attempts"]
         for metric in  metrics:

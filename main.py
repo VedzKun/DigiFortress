@@ -67,10 +67,21 @@ while True:
         print(f"Attack Attempts: {attacks}")
         print(f"Defense Success Rate: {defense_rate:.2f}%")
     elif choice == "6":
-        simulator.run()
+        simulator.run_source_reputation_test()
     elif choice == "7":
         print("\nExiting DigiFortress...")
         agent.security_db.close()
         break
+    elif choice == "8":
+        sources = (
+            agent.security_db.get_all_sources()
+        )
+        print("\n===== SOURCE REPUTATIONS =====")
+        for source in sources:
+            print(f"\nSource: {source[0]}")
+            print(f"Reputation: {source[1]}")
+            print(f"Accepted: {source[2]}")
+            print(f"Conflict: {source[3]}")
+            print(f"Quarantined: {source[4]}")
     else:
         print("\nInvalid choice.")

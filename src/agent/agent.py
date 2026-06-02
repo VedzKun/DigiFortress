@@ -35,6 +35,7 @@ class Agent:
         if related_memories["documents"]:
             related_docs = related_memories["documents"][0]
         print("[STEP 3] Running security validation...")
+        self.security_db.add_sources(source)
         validation = self.validator.validate(memory=text,related_memories=related_docs,source=source)
         trust_score = validation["trust_score"]
         status = validation["status"]
