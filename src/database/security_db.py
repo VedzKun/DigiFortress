@@ -40,8 +40,33 @@ class SecurityDB:
             conflict_count INTEGER DEFAULT 0,
             quarantined_count INTEGER DEFAULT 0
         )""")
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS memory_versions(
+        version_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        memory_group TEXT,
+        content TEXT,
+        timestamp TEXT,
+        source TEXT,
+        trust_score REAL)
+        """)
         self.conn.commit()
     
+    def add_memory_version(self, memory_group, content, timestamp, source, trust_score):
+        self.cursor.execute("""
+        INSERT INTO memory_versions(
+        memory_group, content, timestamp, source, trust_score) 
+        VALUES (?,?,?,?,?)
+        """, (memory_group, content, timestamp, source, trust_score))
+        self.conn.commit()
+
+    def get_memory_versions(self, memory_group):
+        self.cursor.execute("""
+        SELECT * FROM memory_versions
+        WHERE memory_group = ?
+        ORDER BY version_id
+        """,(memory_group,))
+        return self.cursor.fetchall()
+
     def add_sources(self, source_name):
         self.cursor.execute("""
         INSERT OR IGNORE INTO sources(source_name,reputation)VALUES (?,?)""",(source_name,0.5))

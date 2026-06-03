@@ -1,3 +1,4 @@
+import uuid
 from src.memory.memory_manager import MemoryManager
 from src.memory.memory_classifier import MemoryClassifier
 from src.embeddings.embedder import Embedder
@@ -7,6 +8,7 @@ from src.agent.reasoning import ReasoningLayer
 from src.defenses.validator import Validator
 from src.defenses.quarantine import QuarantineManager
 from src.database.security_db import SecurityDB
+from src.memory.llm_version_manager import LLMVersionManager
 from datetime import datetime
 
 class Agent:
@@ -20,6 +22,7 @@ class Agent:
         self.validator = Validator()
         self.quarantine = QuarantineManager()
         self.security_db = SecurityDB()
+        self.version_manager = LLMVersionManager()
 
     def remember(self,text,source="user"):
         print("\n[STEP 1] Generating embedding...")
@@ -45,6 +48,15 @@ class Agent:
         category = self.classifier.classify(text)
         timestamp = str(datetime.now())
         if status == "accepted":
+            memory_group = (self.version_manager.get_memory_group(text))
+            print(f"Group: {memory_group}")
+            self.security_db.add_memory_version(
+                memory_group,
+                text,
+                timestamp,
+                source,
+                trust_score
+            )
             memory_id = self.memory.add_memory(
                 text=text,
                 embedding=embedding,
@@ -62,12 +74,7 @@ class Agent:
             print("\nMemory Accepted.")
             return {"memory_id": memory_id,"status": status}
         elif status == "conflict":
-            memory_id = self.memory.add_memory(
-                text=text,
-                embedding=embedding,
-                category=category,
-                source=source
-            )
+            memory_id = str(uuid.uuid4())
             self.security_db.add_memory(
                 memory_id=memory_id,
                 content=text,

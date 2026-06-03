@@ -19,20 +19,12 @@ class Validator:
         llm_score=self.llm_trust.scores(memory)
         source_rep = self.security_db.get_source_reputation(source)
         trust_score=((rule_score*0.3)+(llm_score*0.5)+(source_rep*0.2))
-        risk_score = (self.risk_engine.calculate_risk(trust_score,source_rep,status))
-        risk_level = (self.risk_engine.get_risk_level(risk_score))
-        print("\n===== TRUST ANALYSIS =====")
-        print(f"Memory: {memory}")
-        print(f"Rule Score: {rule_score}")
-        print(f"LLM Score: {llm_score}")
-        print(f"Final Score: {trust_score}")
-        print("==========================\n")
-        print("\n===== RISK ANALYSIS =====")
-        print(f"Risk Score: {risk_score}")
-        print(f"Risk Level: {risk_level}")
-        print("=========================\n")
-        conflict = False
         
+        conflict = False
+        for existing_memory in related_memories:
+            if self.llm_conflict.detect(memory,existing_memory):
+                conflict = True
+                break
         status = "accepted"
         reason = None
         if trust_score < 0.4:
@@ -45,6 +37,18 @@ class Validator:
             status = "accepted"
             self.security_db.increment_metric("accepted")
         self.security_db.update_source_reputation(source, status)
+        risk_score = (self.risk_engine.calculate_risk(trust_score,source_rep,status))
+        risk_level = (self.risk_engine.get_risk_level(risk_score))
+        print("\n===== TRUST ANALYSIS =====")
+        print(f"Memory: {memory}")
+        print(f"Rule Score: {rule_score}")
+        print(f"LLM Score: {llm_score}")
+        print(f"Final Score: {trust_score}")
+        print("==========================\n")
+        print("\n===== RISK ANALYSIS =====")
+        print(f"Risk Score: {risk_score}")
+        print(f"Risk Level: {risk_level}")
+        print("=========================\n")
         return {
             "trust_score": trust_score,
             "status": status,
