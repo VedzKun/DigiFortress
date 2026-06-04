@@ -11,6 +11,8 @@ while True:
     print("4. Analytics")
     print("5. Security Dashboard")
     print("6. Run Attack Simulation")
+    print("8. Source Reputations")
+    print("9. Security Events")
     print("7. Exit")
     choice = input("\nChoice: ")
     if choice == "1":

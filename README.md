@@ -45,9 +45,10 @@ flowchart TD
 * 🧠 **Persistent Semantic Memory**: Integrates ChromaDB and HuggingFace's `sentence-transformers` (`all-MiniLM-L6-v2`) to embed and recall user data persistently.
 * 🚦 **Intelligent Reasoning Layer**: Dynamically intercepts queries to evaluate whether semantic context retrieval is required or if it can be answered using direct short-term context.
 * 🛡️ **Active Memory Validation Core**:
-  * **Rule-based & LLM Trust Scorer**: Filters incoming payloads through trust scores (calculating weights of 40% rule-based and 60% LLM-based scoring). Low-trust submissions are automatically quarantined.
+  * **Rule-based, LLM & Source Reputation Trust Scorer**: Filters incoming payloads through trust scores (calculating weights of 30% rule-based, 50% LLM-based, and 20% source reputation scoring). Low-trust submissions are automatically quarantined (threshold < 0.4).
   * **LLM Conflict Detector**: Evaluates new memories against similar, overlapping historical beliefs to detect and block logical contradictions in real-time.
   * **Decay & Reputation Analytics**: Automatically calculates a memory's decay score over time and computes active reputation scores based on access counts and trust weightings.
+  * **Security Event Log & Risk Auditing**: Evaluates real-time risk scores (0 to 100) and risk levels (Low, Moderate, High, Critical) using a dynamic risk engine, and logs all memory validation audits persistently to the SQLite registry.
 * ⚔️ **Adversarial Attack Simulator**: Launches prompt injection attacks (e.g. system overrides, exfiltrations) to test the security boundaries of validation layers.
 * 🖥️ **Interactive Shell & Dashboard**: A standard console terminal menu, accompanied by a premium **Streamlit Web UI** visualising metrics and pipeline updates dynamically.
 
@@ -76,6 +77,9 @@ DigiFortress/
 │   │
 │   ├── database/
 │   │   └── security_db.py      # SQLite analytics db tracking access, metrics & reputations
+│   │
+│   ├── security/
+│   │   └── risk_engine.py      # Risk assessment engine calculating risk scores and levels
 │   │
 │   ├── embeddings/
 │   │   └── embedder.py         # Local Sentence Transformers vectorizer wrapper
@@ -158,3 +162,5 @@ python main.py
 * **`5` (Security Dashboard)**: Display defense success rates and blocked counts.
 * **`6` (Run Attack Simulation)**: Inject test payloads and report status.
 * **`7` (Exit)**: Safely closes connections and exits.
+* **`8` (Source Reputations)**: Display active reputation scores and metrics (accepted, conflict, quarantined counts) for each belief source.
+* **`9` (Security Events)**: View detailed, reverse-chronological logs of all security evaluation events (payload, source, status, risk score, risk level, and timestamp).
