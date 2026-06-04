@@ -49,8 +49,31 @@ class SecurityDB:
         source TEXT,
         trust_score REAL)
         """)
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS security_events (
+        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_type TEXT,
+        memory_content TEXT,
+        source TEXT,
+        status TEXT,
+        risk_score REAL,
+        risk_level TEXT,
+        timestamp TEXT)""")
+        self.conn.commit()
+
+    def log_security_event(self,event_type, memory_content, source, status, risk_score, risk_level, timestamp):
+        self.cursor.execute("""
+        INSERT INTO security_events(
+        event_type, memory_content, source, status, risk_score, risk_level, timestamp)
+        VALUES (?,?,?,?,?,?,?)""",(event_type, memory_content, source, status, risk_score, risk_level, timestamp))
         self.conn.commit()
     
+    def get_security_events(self):
+        self.cursor.execute("""
+        SELECT * FROM security_events
+        ORDER BY event_id DESC""")
+        return self.cursor.fetchall()
+
     def add_memory_version(self, memory_group, content, timestamp, source, trust_score):
         self.cursor.execute("""
         INSERT INTO memory_versions(

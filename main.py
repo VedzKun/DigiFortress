@@ -83,5 +83,18 @@ while True:
             print(f"Accepted: {source[2]}")
             print(f"Conflict: {source[3]}")
             print(f"Quarantined: {source[4]}")
+    elif choice == "9":
+        events = agent.security_db.get_security_events()
+        print("\n===== SECURITY EVENTS =====")
+        for event in events:
+            print("\n-----------------------")
+            print(f"Event ID: {event[0]}")
+            print(f"Type: {event[1]}")
+            print(f"Memory: {event[2]}")
+            print(f"Source: {event[3]}")
+            print(f"Status: {event[4]}")
+            print(f"Risk Score: {event[5]}")
+            print(f"Risk Level: {event[6]}")
+            print(f"Time: {event[7]}")
     else:
         print("\nInvalid choice.")

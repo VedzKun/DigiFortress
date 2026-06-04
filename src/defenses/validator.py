@@ -6,6 +6,7 @@ from src.defenses.llm_trust_scorer import LLMTrustScorer
 from src.defenses.llm_conflict_detector import LLMConflictDetector
 from src.database.security_db import SecurityDB
 from src.security.risk_engine import RiskEngine
+from datetime import datetime
 
 class Validator:
     def __init__(self):
@@ -39,6 +40,17 @@ class Validator:
         self.security_db.update_source_reputation(source, status)
         risk_score = (self.risk_engine.calculate_risk(trust_score,source_rep,status))
         risk_level = (self.risk_engine.get_risk_level(risk_score))
+        self.security_db.log_security_event(
+            event_type="MEMORY_EVALUATION",
+            memory_content=memory,
+            source=source,
+            status=status,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            timestamp=str(
+                datetime.now()
+            )
+        )
         print("\n===== TRUST ANALYSIS =====")
         print(f"Memory: {memory}")
         print(f"Rule Score: {rule_score}")
@@ -51,6 +63,8 @@ class Validator:
         print("=========================\n")
         return {
             "trust_score": trust_score,
+            "risk_score": risk_score,
+            "risk_level": risk_level,
             "status": status,
             "reason": reason
         }
