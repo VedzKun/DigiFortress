@@ -60,7 +60,7 @@ class SecurityDB:
         risk_level TEXT,
         timestamp TEXT)""")
         self.cursor.execute("""
-        CREATE TABLE IF NOT EXISTS read_team_results(
+        CREATE TABLE IF NOT EXISTS red_team_results(
         test_id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp TEXT,
         total_attacks INTEGER,
@@ -73,7 +73,7 @@ class SecurityDB:
     def save_read_team_res(self, timestamp, total_attacks, blocked, missed, detection_rate, security_score):
         self.cursor.execute("""
         INSERT INTO red_team_results(
-        timestamp, total_attacks, blocked, missed detection_rate, security_score)
+        timestamp, total_attacks, blocked, missed, detection_rate, security_score)
         VALUES(?,?,?,?,?,?)""",(timestamp, total_attacks,blocked,missed,detection_rate,security_score))
         self.conn.commit()
 
@@ -81,6 +81,7 @@ class SecurityDB:
         self.cursor.execute("""
         SELECT * FROM red_team_results ORDER BY test_id DESC""")
         return self.cursor.fetchall()
+
 
     def log_security_event(self,event_type, memory_content, source, status, risk_score, risk_level, timestamp):
         self.cursor.execute("""
@@ -298,7 +299,7 @@ class SecurityDB:
         trust_score,
         access_count,
         reputation,
-        decay_score
+        decay_score,
         last_accessed
         FROM memories
         ORDER BY reputation DESC

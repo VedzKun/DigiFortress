@@ -8,8 +8,11 @@ from src.defenses.llm_conflict_detector import LLMConflictDetector
 from src.database.security_db import SecurityDB
 from src.security.risk_engine import RiskEngine
 from src.security.explanation_engine import ExplanationEngine
+from src.security.agents.trust_agent import TrustAgent
+from src.security.agents.security_agent import SecurityAgent
+from src.security.agents.consistency_agent import ConsistencyAgent
+from src.security.consensus_engine import ConsensusEngine
 from datetime import datetime
-
 class Validator:
     def __init__(self):
         self.trust = TrustScorer()
@@ -18,12 +21,19 @@ class Validator:
         self.security_db = SecurityDB()
         self.risk_engine = RiskEngine()
         self.explainer = ExplanationEngine()
+        self.trust_agent = TrustAgent()
+        self.security_agent = SecurityAgent()
+        self.consistency_agent = ConsistencyAgent()
+        self.consensus = ConsensusEngine()
     def validate(self, memory, related_memories, source):
         rule_score=self.trust.score(memory,source)
         llm_score=self.llm_trust.scores(memory)
         source_rep = self.security_db.get_source_reputation(source)
-        trust_score=((rule_score*0.3)+(llm_score*0.5)+(source_rep*0.2))
-
+        trust_agent_score = (self.trust_agent.evaluate(memory))
+        security_agent_score = (self.security_agent.evaluate(memory))
+        Consistency_agent_score = (self.consistency_agent.evaluate(memory, related_memories))
+        multi_agent_score = (self.consensus.calculate(trust_agent_score,security_agent_score, Consistency_agent_score))
+        trust_score=(multi_agent_score*0.8 + source_rep * 0.2)
         conflict = False
         for existing_memory in related_memories:
             if self.llm_conflict.detect(memory,existing_memory):
@@ -31,7 +41,7 @@ class Validator:
                 break
         status = "accepted"
         reason = None
-        if trust_score < 0.4:
+        if trust_score < 0.4 or security_agent_score == 0.0:
             status = "quarantined"
             self.security_db.increment_metric("quarantined")
         elif conflict:
@@ -43,7 +53,17 @@ class Validator:
         self.security_db.update_source_reputation(source, status)
         risk_score = (self.risk_engine.calculate_risk(trust_score,source_rep,status))
         risk_level = (self.risk_engine.get_risk_level(risk_score))
-        reasons = (self.explainer.generate(memory, trust_score, llm_score, source_rep, risk_score, risk_level, status, conflict))
+        reasons = self.explainer.generate(
+            memory=memory,
+            trust_score=trust_score,
+            llm_score=llm_score,
+            source_rep=source_rep,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            status=status,
+            conflict=conflict,
+            security_agent_score=security_agent_score
+        )
         self.security_db.log_security_event(
             event_type="MEMORY_EVALUATION",
             memory_content=memory,
@@ -53,6 +73,7 @@ class Validator:
             risk_level=risk_level,
             timestamp=str(datetime.now())
         )
+
         print("\n===== TRUST ANALYSIS =====")
         print(f"Memory: {memory}")
         print(f"Rule Score: {rule_score}")
@@ -65,7 +86,12 @@ class Validator:
         print("\n===== SECURITY EXPLANATION =====")
         for reason in reasons:
             print(f"- {reason}")
-            
+        print("\n===== MULTI-AGENT REVIEW =====")
+        print(f"Trust Agent: {trust_agent_score}")
+        print(f"Security Agent: {security_agent_score}")
+        print(f"Consistency Agent: {Consistency_agent_score}")
+        print(f"Consensus: {multi_agent_score}")
+        print("==============================") 
         return {
             "trust_score": trust_score,
             "risk_score": risk_score,
