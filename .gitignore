@@ -12,9 +12,7 @@ __pycache__/
 htmlcov/
 
 # Local data & chroma db storage
-data/chroma_db/db/
-data/chroma_db/*.sqlite3
-data/chroma_db/*.bin
+data/
 
 # IDE and OS files
 .vscode/

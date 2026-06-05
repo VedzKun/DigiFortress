@@ -11,6 +11,9 @@ from src.database.security_db import SecurityDB
 from src.memory.llm_version_manager import LLMVersionManager
 from src.graph.knowledge_graph import KnowledgeGraph
 from src.graph.relation_extractor import RelationExtractor
+from src.security.session_manager import SessionManager
+from src.security.session_risk_engine import SessionRiskEngine
+from src.security.burst_detector import BurstDetector
 from datetime import datetime
 
 class Agent:
@@ -27,7 +30,10 @@ class Agent:
         self.version_manager = LLMVersionManager()
         self.graph = KnowledgeGraph()
         self.extractor = RelationExtractor()
-
+        self.session_manager = SessionManager()
+        self.session_risk_engine = SessionRiskEngine()
+        self.burst_detector = BurstDetector()
+        
     def remember(self,text,source="user"):
         print("\n[STEP 1] Generating embedding...")
         embedding = self.embedder.generate_embedding(
@@ -51,6 +57,8 @@ class Agent:
         print(f"Status: {status}")
         category = self.classifier.classify(text)
         timestamp = str(datetime.now())
+        session_id = self.session_manager.get_session_id()
+        self.security_db.session_logger(session_id, text, timestamp)
         if status == "accepted":
             relation = (self.extractor.extract(text)).lower().strip()
             print(f"Extracted Relation: {relation}")

@@ -1,3 +1,4 @@
+from datetime import datetime
 from src.agent.agent import Agent
 from src.attacks.poisoning_simulator import PoisoningSimulator
 from src.redteam.red_team_engine import RedTeamEngine
@@ -22,11 +23,26 @@ while True:
     print("7. Exit")
     choice = input("\nChoice: ")
     if choice == "1":
-        memory = input("\nEnter memory: ")
-        result = agent.remember(memory)
-        print(f"\nStatus: {result['status']}")
-        if result["memory_id"]:
-            print(f"Memory ID: {result['memory_id']}")
+        print("\nEnter memory (press Enter on an empty line to submit):")
+        lines = []
+        while True:
+            try:
+                line = input()
+                if not line:
+                    break
+                lines.append(line)
+            except EOFError:
+                break
+        if lines:
+            for line in lines:
+                if line.strip():
+                    print(f"\nProcessing memory: '{line}'")
+                    result = agent.remember(line)
+                    print(f"Status: {result['status']}")
+                    if result.get("memory_id"):
+                        print(f"Memory ID: {result['memory_id']}")
+        else:
+            print("No memory entered.")
     elif choice == "2":
         question = input("\nAsk: ")
         response = agent.ask(question)
@@ -149,10 +165,38 @@ while True:
         if not summary['recent_events']:
             print("  No events logged yet.")
         for event in summary['recent_events']:
-            # event index: 0:id, 1:type, 2:content, 3:source, 4:status, 5:risk_score, 6:risk_level, 7:timestamp
             print(f"  - [{event[7]}] {event[1]} | Status: {event[4]} | Risk: {event[5]:.1f} ({event[6]})")
             content_truncated = event[2][:60] + "..." if len(event[2]) > 60 else event[2]
             print(f"    Memory: \"{content_truncated}\"")
         print("==================================")
+    elif choice == "14":
+        session_id = agent.session_manager.get_session_id()
+        writes = agent.security_db.get_session_write_count(session_id)
+        risk_score = agent.session_risk_engine.calculate_risk(writes)
+        
+        print("\n===== SESSION ANALYTICS =====")
+        print(f"Session ID: {session_id}")
+        print(f"Writes: {writes}")
+        timestamps = agent.security_db.get_session_timestamps(session_id)
+        burst_detected = agent.burst_detector.detect_burst(timestamps)
+        if burst_detected:
+            risk_score = min(risk_score + 0.3, 1.0)
+            agent.security_db.log_security_event(
+                event_type="MINJA_BURST_DETECTED",
+                memory_content="Session Burst Activity",
+                source=session_id,
+                status="suspicious",
+                risk_score=risk_score,
+                risk_level="HIGH",
+                timestamp=str(datetime.now())
+            )
+        risk_level = agent.session_risk_engine.get_risk_level(risk_score)
+        print(f"Burst Detected: {burst_detected}")
+        print(f"Risk Score: {risk_score}")
+        print(f"Risk Level: {risk_level}")
+        print("\nRecent Timestamps:")
+        for ts in timestamps:
+            print(f"- {ts}")
+        print("\n=============================")
     else:
         print("\nInvalid choice.")

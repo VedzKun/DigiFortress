@@ -68,8 +68,52 @@ class SecurityDB:
         missed INTEGER,
         detection_rate REAL,
         security_score REAL)""")
+        self.cursor.execute("DROP TABLE IF EXISTS session_activity")
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS session_activity(
+        activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT,
+        timestamp TEXT,
+        memory_content TEXT)""")
+        self.conn.commit()
+
+    def session_logger(self, session_id, memory_content, timestamp):
+        self.cursor.execute("""
+        INSERT INTO session_activity(session_id,timestamp,memory_content)
+        VALUES(?,?,?)""", (session_id,timestamp,memory_content))
         self.conn.commit()
     
+    def get_recent_write_count(self, session_id):
+        self.cursor.execute("""
+        SELECT COUNT(*) FROM session_activity WHERE session_id = ?""",(session_id,))
+        result = self.cursor.fetchone()
+        return result[0] if result else 0
+    
+    def get_session_summary(self, session_id):
+        self.cursor.execute("""
+        SELECT COUNT(*) FROM session_activity WHERE session_id = ?""",(session_id,))
+        result = self.cursor.fetchone()
+        return result
+
+    def get_session_write_count(self, session_id):
+        self.cursor.execute("""SELECT COUNT(*) FROM session_activity
+        WHERE session_id = ?""",(session_id,))
+        result = self.cursor.fetchone()
+        return result [0]
+
+    def get_session_timestamps(self, session_id):
+        self.cursor.execute("""
+        SELECT timestamp FROM session_activity WHERE session_id = ? ORDER BY timestamp DESC LIMIT 5""", (session_id,))
+        rows = self.cursor.fetchall()
+        return [row[0] for row in rows]
+
+    def get_session_memory_count(self, session_id):
+        self.cursor.execute("""
+        SELECT COUNT(*) FROM session_activity WHERE session_id = ?""", (session_id,))
+        result = self.cursor.fetchone()
+        return result[0] if result else 0
+
+
     def save_read_team_res(self, timestamp, total_attacks, blocked, missed, detection_rate, security_score):
         self.cursor.execute("""
         INSERT INTO red_team_results(
