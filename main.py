@@ -1,6 +1,7 @@
 from src.agent.agent import Agent
 from src.attacks.poisoning_simulator import PoisoningSimulator
 from src.redteam.red_team_engine import RedTeamEngine
+from src.security.dashboard_service import DashboardService
 agent = Agent()
 simulator = PoisoningSimulator(agent)
 redteam = RedTeamEngine(agent)
@@ -14,6 +15,10 @@ while True:
     print("6. Run Attack Simulation")
     print("8. Source Reputations")
     print("9. Security Events")
+    print("10. Run Red Team Test")
+    print("11. View Red Team Results")
+    print("12. Knowledge Graph Neighbors")
+    print("13. Memory Security Overview (Dashboard)")
     print("7. Exit")
     choice = input("\nChoice: ")
     if choice == "1":
@@ -113,5 +118,41 @@ while True:
             print(f"Missed: {result[4]}")
             print(f"Detection Rate: {result[5]:.2f}%")
             print(f"Security Score: {result[6]:.2f}%")
+    elif choice == "12":
+        node = input("\nNode: ")
+        neighbors = (agent.graph.get_neighbors(node))
+        print("\nConnected Nodes:")
+        for n in neighbors:
+            print(f"- {n}")
+    elif choice == "13":
+        dashboard = DashboardService(agent.security_db)
+        summary = dashboard.get_summary()
+        print("\n==================================")
+        print("MEMORY SECURITY OVERVIEW")
+        print("==================================")
+        print(f"Accepted Memories: {summary['accepted']}")
+        print(f"Conflicts: {summary['conflict']}")
+        print(f"Quarantined: {summary['quarantined']}")
+        print("----------------------------------")
+        print(f"Average Trust Score: {summary['avg_trust']:.2f}")
+        print(f"Average Risk Score: {summary['avg_risk']:.2f}")
+        print("----------------------------------")
+        print(f"Security Score: {summary['security_score']:.2f}%")
+        print("----------------------------------")
+        print("Top Threat Sources:")
+        if not summary['top_threat_sources']:
+            print("  No sources registered yet.")
+        for source_name, rep in summary['top_threat_sources']:
+            print(f"  - {source_name}: {rep:.2f}")
+        print("----------------------------------")
+        print("Recent Security Events:")
+        if not summary['recent_events']:
+            print("  No events logged yet.")
+        for event in summary['recent_events']:
+            # event index: 0:id, 1:type, 2:content, 3:source, 4:status, 5:risk_score, 6:risk_level, 7:timestamp
+            print(f"  - [{event[7]}] {event[1]} | Status: {event[4]} | Risk: {event[5]:.1f} ({event[6]})")
+            content_truncated = event[2][:60] + "..." if len(event[2]) > 60 else event[2]
+            print(f"    Memory: \"{content_truncated}\"")
+        print("==================================")
     else:
         print("\nInvalid choice.")

@@ -9,6 +9,8 @@ from src.defenses.validator import Validator
 from src.defenses.quarantine import QuarantineManager
 from src.database.security_db import SecurityDB
 from src.memory.llm_version_manager import LLMVersionManager
+from src.graph.knowledge_graph import KnowledgeGraph
+from src.graph.relation_extractor import RelationExtractor
 from datetime import datetime
 
 class Agent:
@@ -23,6 +25,8 @@ class Agent:
         self.quarantine = QuarantineManager()
         self.security_db = SecurityDB()
         self.version_manager = LLMVersionManager()
+        self.graph = KnowledgeGraph()
+        self.extractor = RelationExtractor()
 
     def remember(self,text,source="user"):
         print("\n[STEP 1] Generating embedding...")
@@ -48,7 +52,12 @@ class Agent:
         category = self.classifier.classify(text)
         timestamp = str(datetime.now())
         if status == "accepted":
-            memory_group = (self.version_manager.get_memory_group(text))
+            relation = (self.extractor.extract(text)).lower().strip()
+            print(f"Extracted Relation: {relation}")
+            if "," in relation:
+                source_node, target_node = (relation.split(","))
+                self.graph.add_relation(source_node.strip(),target_node.strip())
+            memory_group = (self.version_manager.get_memory_group(text)).lower().strip()
             print(f"Group: {memory_group}")
             self.security_db.add_memory_version(
                 memory_group,

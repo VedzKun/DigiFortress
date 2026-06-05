@@ -82,6 +82,21 @@ class SecurityDB:
         SELECT * FROM red_team_results ORDER BY test_id DESC""")
         return self.cursor.fetchall()
 
+    def get_source_reputations(self):
+        self.cursor.execute("""
+        SELECT
+            source_name,
+            reputation
+        FROM sources
+        ORDER BY reputation ASC
+        """)
+        return self.cursor.fetchall()
+
+    def get_metrics(self):
+        self.cursor.execute("SELECT metric_name, metric_value FROM metrics")
+        return {row[0]: row[1] for row in self.cursor.fetchall()}
+
+
 
     def log_security_event(self,event_type, memory_content, source, status, risk_score, risk_level, timestamp):
         self.cursor.execute("""
