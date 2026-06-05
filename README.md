@@ -44,13 +44,16 @@ flowchart TD
 
 * 🧠 **Persistent Semantic Memory**: Integrates ChromaDB and HuggingFace's `sentence-transformers` (`all-MiniLM-L6-v2`) to embed and recall user data persistently.
 * 🚦 **Intelligent Reasoning Layer**: Dynamically intercepts queries to evaluate whether semantic context retrieval is required or if it can be answered using direct short-term context.
-* 🛡️ **Active Memory Validation Core**:
-  * **Rule-based, LLM & Source Reputation Trust Scorer**: Filters incoming payloads through trust scores (calculating weights of 30% rule-based, 50% LLM-based, and 20% source reputation scoring). Low-trust submissions are automatically quarantined (threshold < 0.4).
+* 🛡️ **Active Multi-Agent Memory Validation Core**:
+  * **Multi-Agent Consensus Review**: Filters incoming beliefs through independent **Trust**, **Security**, and **Consistency** agents. Consensus scores are computed dynamically using a consensus engine.
+  * **Safety Overrides**: Explicitly blocks/quarantines dangerous payloads if the security agent flags them (`0.0` score) even if the overall trust score is pulled above thresholds by high source reputation.
   * **LLM Conflict Detector**: Evaluates new memories against similar, overlapping historical beliefs to detect and block logical contradictions in real-time.
   * **Decay & Reputation Analytics**: Automatically calculates a memory's decay score over time and computes active reputation scores based on access counts and trust weightings.
   * **Security Event Log & Risk Auditing**: Evaluates real-time risk scores (0 to 100) and risk levels (Low, Moderate, High, Critical) using a dynamic risk engine, and logs all memory validation audits persistently to the SQLite registry.
-* ⚔️ **Adversarial Attack Simulator**: Launches prompt injection attacks (e.g. system overrides, exfiltrations) to test the security boundaries of validation layers.
-* 🖥️ **Interactive Shell & Dashboard**: A standard console terminal menu, accompanied by a premium **Streamlit Web UI** visualising metrics and pipeline updates dynamically.
+* 🕸️ **Knowledge Graph Extraction**: Integrates `NetworkX` to construct a dynamic, persistent semantic network. Entities and their relations are automatically extracted from accepted memories using LLM-based parsing.
+* ⚔️ **Adversarial Attack Simulator**: Launches prompt injection attacks (e.g. system overrides, exfiltrations) to test the security boundaries of validation layers and logs results to `red_team_results`.
+* 📊 **Memory Security Dashboard**: A console dashboard engine summarizing accepted/conflict/quarantined memory metrics, average risk, top threat sources, and recent security events.
+* 🖥️ **Interactive Shell & Streamlit Web UI**: A standard console terminal menu, accompanied by a premium **Streamlit Web UI** visualising metrics and pipeline updates dynamically.
 
 ---
 
@@ -75,17 +78,32 @@ DigiFortress/
 │   │   ├── llm_conflict_detector.py # Contradiction detector running on local Qwen LLM
 │   │   └── quarantine.py       # Temporary containment for quarantined memories
 │   │
+│   ├── security/
+│   │   ├── agents/
+│   │   │   ├── trust_agent.py        # Core trust classification evaluation
+│   │   │   ├── security_agent.py     # Rule-based static security policy checker
+│   │   │   └── consistency_agent.py  # Checks incoming memory contradiction overlaps
+│   │   ├── consensus_engine.py       # Computes consensus ratings among security agents
+│   │   ├── explanation_engine.py     # Generates multi-agent security audit reasoning
+│   │   ├── dashboard_service.py      # Aggregates overall system security metrics
+│   │   └── risk_engine.py            # Risk assessment engine calculating risk scores and levels
+│   │
+│   ├── graph/
+│   │   ├── knowledge_graph.py        # NetworkX semantic entity link network
+│   │   └── relation_extractor.py     # LLM-based entity-relation parser
+│   │
 │   ├── database/
 │   │   └── security_db.py      # SQLite analytics db tracking access, metrics & reputations
-│   │
-│   ├── security/
-│   │   └── risk_engine.py      # Risk assessment engine calculating risk scores and levels
 │   │
 │   ├── embeddings/
 │   │   └── embedder.py         # Local Sentence Transformers vectorizer wrapper
 │   │
 │   ├── attacks/
 │   │   └── poisoning_simulator.py # Injector simulator launching adversarial payloads
+│   │
+│   ├── redteam/
+│   │   ├── red_team_engine.py  # Runs adversarial payload suites and logs to DB
+│   │   └── attack_library.py   # Curated prompt injection and system override datasets
 │   │
 │   └── llm/
 │       └── llm_handler.py      # Ollama connector client for local model generation
@@ -164,3 +182,7 @@ python main.py
 * **`7` (Exit)**: Safely closes connections and exits.
 * **`8` (Source Reputations)**: Display active reputation scores and metrics (accepted, conflict, quarantined counts) for each belief source.
 * **`9` (Security Events)**: View detailed, reverse-chronological logs of all security evaluation events (payload, source, status, risk score, risk level, and timestamp).
+* **`10` (Run Red Team Test)**: Run automated category-wide Red Team adversarial injection waves.
+* **`11` (View Red Team Results)**: View detailed historical results from previous Red Team executions.
+* **`12` (Knowledge Graph Neighbors)**: Query any node in the knowledge graph to view its extracted entity neighbors.
+* **`13` (Memory Security Overview)**: Print aggregated, console-based dashboard summary report of all system state.
