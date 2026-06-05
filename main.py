@@ -101,5 +101,17 @@ while True:
             print(f"Time: {event[7]}")
     elif choice == "10":
         redteam.run()
+    elif choice == "11":
+        results = agent.security_db.get_red_team_res()
+        print("\n===== RED TEAM RESULTS =====")
+        for result in results:
+            print("\n--------------------------")
+            print(f"Test ID: {result[0]}")
+            print(f"Timestamp: {result[1]}")
+            print(f"Total Attacks: {result[2]}")
+            print(f"Blocked: {result[3]}")
+            print(f"Missed: {result[4]}")
+            print(f"Detection Rate: {result[5]:.2f}%")
+            print(f"Security Score: {result[6]:.2f}%")
     else:
         print("\nInvalid choice.")

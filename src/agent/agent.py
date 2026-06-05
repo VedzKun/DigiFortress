@@ -42,7 +42,7 @@ class Agent:
         validation = self.validator.validate(memory=text,related_memories=related_docs,source=source)
         trust_score = validation["trust_score"]
         status = validation["status"]
-        reason = validation["reason"]
+        reason = validation["reasons"]
         print(f"Trust Score: {trust_score}")
         print(f"Status: {status}")
         category = self.classifier.classify(text)

@@ -1,4 +1,6 @@
 from src.redteam.attack_library import AttackLibrary
+from datetime import datetime
+
 class RedTeamEngine:
     def __init__(self, agent):
         self.agent = agent
@@ -24,6 +26,7 @@ class RedTeamEngine:
         
         detection_rate = (blocked / total) * 100 if total > 0 else 0.0
         security_score = (blocked / total) * 100 if total > 0 else 0.0
+        self.agent.security_db.save_red_team_res(timestamp=str(datetime.now()), total_attacks=total, blocked=blocked, missed=missed, detection_rate=detection_rate, security_score=security_score)
         print("RED TEAM REPORT")
         print(f"TOTAL ATTACKS: {total}")
         print(f"BLOCKED: {blocked}")
