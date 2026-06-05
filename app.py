@@ -108,7 +108,7 @@ st.sidebar.markdown("---")
 # Navigation Selector
 page = st.sidebar.radio(
     "Navigation Menu",
-    ["Security Dashboard", "Core Memory Manager", "Remember (New Memory)", "Ask Agent (Chat)", "Attack Simulator"]
+    ["Security Dashboard", "Core Memory Manager", "Remember (New Memory)", "Ask Agent (Chat)", "Attack Simulator", "Session Analytics"]
 )
 
 st.sidebar.markdown("---")
@@ -384,19 +384,42 @@ elif page == "Remember (New Memory)":
             validation = agent.validator.validate(memory=new_mem, related_memories=related_docs, source=source_opt)
             trust_score = validation["trust_score"]
             status = validation["status"]
+            reasons = validation["reasons"]
+            
+            # Log session activity
+            session_id = agent.session_manager.get_session_id()
+            agent.security_db.session_logger(session_id, new_mem, str(datetime.now()))
             
             # Render evaluation metrics
             st.markdown(f"""
             <div style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
                 <p style="margin: 0; color: #8b949e;">Trust Score: <b>{trust_score:.2f}</b></p>
                 <div style="background-color: #30363d; border-radius: 4px; height: 10px; margin-top: 5px;">
-                    <div style="background-color: {'#4caf50' if trust_score >= 0.4 else '#f44336'}; width: {trust_score*100}%; height: 10px; border-radius: 4px;"></div>
+                    <div style="background-color: {'#4caf50' if status == 'accepted' else '#ff9800' if status == 'conflict' else '#f44336'}; width: {trust_score*100}%; height: 10px; border-radius: 4px;"></div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
+            st.markdown("##### Multi-Agent Consensus Breakdown")
+            c_trust, c_sec, c_consist, c_consensus = st.columns(4)
+            with c_trust:
+                st.metric("Trust Agent", f"{validation.get('trust_agent_score', 0.0):.2f}")
+            with c_sec:
+                st.metric("Security Agent", f"{validation.get('security_agent_score', 0.0):.2f}")
+            with c_consist:
+                st.metric("Consistency Agent", f"{validation.get('consistency_agent_score', 0.0):.2f}")
+            with c_consensus:
+                st.metric("Consensus", f"{validation.get('consensus', 0.0):.2f}")
+            
             # Final Decision Box
             if status == "accepted":
+                relation = agent.extractor.extract(new_mem).lower().strip()
+                if "," in relation:
+                    source_node, target_node = relation.split(",")
+                    agent.graph.add_relation(source_node.strip(), target_node.strip())
+                memory_group = agent.version_manager.get_memory_group(new_mem).lower().strip()
+                agent.security_db.add_memory_version(memory_group, new_mem, str(datetime.now()), source_opt, trust_score)
+                
                 # Actually save
                 category = agent.classifier.classify(new_mem)
                 m_id = agent.memory.add_memory(
@@ -413,7 +436,7 @@ elif page == "Remember (New Memory)":
                     source=source_opt,
                     timestamp=str(datetime.now())
                 )
-                st.success("**Accepted**: Memory integrated successfully into memory stores!")
+                st.success(f"**Accepted**: Memory integrated successfully! (Relation: `{relation}` | Group: `{memory_group}`)")
             elif status == "conflict":
                 # Actually save with conflict status
                 category = agent.classifier.classify(new_mem)
@@ -434,8 +457,8 @@ elif page == "Remember (New Memory)":
                 st.warning("**Conflict Blocked**: A logical contradiction with an existing memory was detected! Metric incremented.")
             elif status == "quarantined":
                 # Quarantine
-                agent.quarantine.quarantine_memory(content=new_mem, reason="low_trust")
-                st.error("**Quarantined**: The source or content has extremely low trust score! Sent to secure containment quarantine.")
+                agent.quarantine.quarantine_memory(content=new_mem, reason=reasons)
+                st.error(f"**Quarantined**: Low trust score or security violation detected! Reasons: {reasons}")
         elif remember_clicked:
             st.error("Memory text cannot be empty!")
 
@@ -599,3 +622,53 @@ elif page == "Attack Simulator":
             st.metric("Total Wave Block Rate", f"{(blocked / 5) * 100:.1f}%")
         else:
             log_placeholder.info("No active simulated feeds. Press 'Trigger Attack Simulator' to begin the injection flow.")
+
+# ================= PAGE 6: SESSION ANALYTICS =================
+elif page == "Session Analytics":
+    st.markdown("<h1 class='main-header'>Session Analytics</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='sub-header'>Real-time tracking of writes, active session burst detection, and session-level risk scores.</p>", unsafe_allow_html=True)
+    
+    session_id = agent.session_manager.get_session_id()
+    writes = agent.security_db.get_session_write_count(session_id)
+    
+    timestamps = agent.security_db.get_session_timestamps(session_id)
+    burst_detected = agent.burst_detector.detect_burst(timestamps)
+    
+    risk_score = agent.session_risk_engine.calculate_risk(writes)
+    if burst_detected:
+        risk_score = min(risk_score + 0.3, 1.0)
+        
+    risk_level = agent.session_risk_engine.get_risk_level(risk_score)
+    
+    st.markdown("<div style='background: rgba(22, 27, 34, 0.7); border: 1px solid #30363d; border-radius: 12px; padding: 25px;'>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Session ID (Prefix)", session_id[:8])
+    with col2:
+        st.metric("Writes in Session", writes)
+    with col3:
+        st.metric("Burst Detected", "YES" if burst_detected else "NO")
+        
+    st.markdown("---")
+    
+    # Progress bar / risk visualization
+    st.markdown(f"#### Session Risk Assessment")
+    st.markdown(f"Risk Score: **{risk_score:.2f}** | Risk Level: **{risk_level}**")
+    
+    risk_color = '#f44336' if risk_level == "HIGH" else '#ff9800' if risk_level == "MEDIUM" else '#4caf50'
+    st.markdown(f"""
+    <div style="background-color: #30363d; border-radius: 4px; height: 16px; margin-top: 5px; margin-bottom: 25px;">
+        <div style="background-color: {risk_color}; width: {risk_score*100}%; height: 16px; border-radius: 4px;"></div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("#### Recent Activity Timestamps")
+    if not timestamps:
+        st.info("No activity registered in this session yet.")
+    else:
+        for i, ts in enumerate(timestamps):
+            st.markdown(f"{i+1}. `{ts}`")
+            
+    st.markdown("</div>", unsafe_allow_html=True)
+

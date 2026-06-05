@@ -97,5 +97,9 @@ class Validator:
             "risk_score": risk_score,
             "risk_level": risk_level,
             "status": status,
-            "reasons": reasons
+            "reasons": reasons,
+            "trust_agent_score": trust_agent_score,
+            "security_agent_score": security_agent_score,
+            "consistency_agent_score": Consistency_agent_score,
+            "consensus": multi_agent_score
         }
