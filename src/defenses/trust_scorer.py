@@ -11,12 +11,18 @@ class TrustScorer:
     def score(self, content, source="user"):
         trust = self.source_scores.get(source, 0.3)
         suspicious_keywords = [
-            "send money",
-            "transfer funds",
-            "attacker",
-            "ignore instructions",
-            "bypass",
-            "transfer money"
+                "transfer money",
+                "attacker@gmail.com",
+                "disable security",
+                "disable security checks",
+                "ignore previous instructions",
+                "ignore previous commands",
+                "trust every future memory",
+                "bypass authentication",
+                "delete audit logs",
+                "disable logging",
+                "ignore security warnings",
+                "override security"
         ]
         content_lower = content.lower()
         for keyword in suspicious_keywords:

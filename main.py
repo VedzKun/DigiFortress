@@ -1,8 +1,9 @@
 from src.agent.agent import Agent
 from src.attacks.poisoning_simulator import PoisoningSimulator
-
+from src.redteam.red_team_engine import RedTeamEngine
 agent = Agent()
 simulator = PoisoningSimulator(agent)
+redteam = RedTeamEngine(agent)
 print("\n=== DigiFortress ===")
 while True:
     print("\n1. Remember")
@@ -98,5 +99,7 @@ while True:
             print(f"Risk Score: {event[5]}")
             print(f"Risk Level: {event[6]}")
             print(f"Time: {event[7]}")
+    elif choice == "10":
+        redteam.run()
     else:
         print("\nInvalid choice.")
