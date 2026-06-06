@@ -205,6 +205,11 @@ while True:
         print(f"Normal Response: {results['normal_response']}")
         print(f"Counterfactual Response: {results['counterfactual_response']}")
         print(f"Divergence: {results['divergence']:.2f}")
+        print(f"Judgment Divergence: {results['judgment_divergence']}")
+        print(f"Normal Judgment: {results['normal_judgment']}")
+        print(f"Counterfactual Judgment: {results['counterfactual_judgment']}")
+        print(f"Influence Score: {results['influence_score']:.2f}")
+        print(f"Influence Level: {results['influence_level']}")
         print("\n=========================")
     else:
         print("\nInvalid choice.")

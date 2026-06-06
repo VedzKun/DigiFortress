@@ -15,6 +15,8 @@ from src.security.session_manager import SessionManager
 from src.security.session_risk_engine import SessionRiskEngine
 from src.security.burst_detector import BurstDetector
 from src.security.counterfactual_auditor import CounterfactualAuditor
+from src.security.judgement_analyser import JudgmentAnalyzer
+from src.security.influence_engine import InfluenceEngine
 from datetime import datetime
 
 class Agent:
@@ -35,16 +37,31 @@ class Agent:
         self.session_risk_engine = SessionRiskEngine()
         self.burst_detector = BurstDetector()
         self.counterfactual_auditor = CounterfactualAuditor()
-        
+        self.judgement_analyser = JudgmentAnalyzer()
+        self.influence_engine = InfluenceEngine()
     def audit_query(self, query):
         conversation_history = (self.conversation.get_history())
         normal_response = (self.llm.generate_response(query=query,retrieved_memories=self.memory.retrieve_memory(self.embedder.generate_embedding(query))["documents"][0],conversation_history=conversation_history))
+        normal_judgment = (self.judgment_analyser.classify(normal_response))
         counterfactual_response = (self.llm.generate_response(query=query, retrieved_memories=[],conversation_history=conversation_history))
+        counterfactual_judgment = (self.judgment_analyser.classify(counterfactual_response))
         divergence = (self.counterfactual_auditor.calculate_divergence(normal_response, counterfactual_response))
+        session_id = (self.session_manager.get_session_id())
+        writes = (self.security_db.get_session_write_count(session_id))
+        session_risk = (self.session_risk_engine.calculate_risk(writes))
+        judgment_divergence = (normal_judgment != counterfactual_judgment)
+        influence_score = (self.influence_engine.calculate(divergence,judgment_divergence,session_risk))
+        influence_level = (self.influence_engine.level(influence_score))
+        self.security_db.insert_counterfactual(query,normal_response,normal_judgment,counterfactual_response,counterfactual_judgment,divergence,judgment_divergence)
         return {
             "normal response": normal_response,
             "counterfactual response": counterfactual_response,
-            "divergence": divergence
+            "divergence": divergence,
+            "judgment_divergence": judgment_divergence,
+            "normal_judgment": normal_judgment,
+            "counterfactual_judgment": counterfactual_judgment,
+            "influence_score": influence_score,
+            "influence_level": influence_level
         }
 
     def remember(self,text,source="user"):
