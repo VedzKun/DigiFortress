@@ -3,9 +3,11 @@ from src.agent.agent import Agent
 from src.attacks.poisoning_simulator import PoisoningSimulator
 from src.redteam.red_team_engine import RedTeamEngine
 from src.security.dashboard_service import DashboardService
+from src.redteam.minja_runner import MINJARunner
 agent = Agent()
 simulator = PoisoningSimulator(agent)
 redteam = RedTeamEngine(agent)
+minja = MINJARunner(agent)
 print("\n=== DigiFortress ===")
 while True:
     print("\n1. Remember")
@@ -211,5 +213,7 @@ while True:
         print(f"Influence Score: {results['influence_score']:.2f}")
         print(f"Influence Level: {results['influence_level']}")
         print("\n=========================")
+    elif choice == "16":
+        minja.run()
     else:
         print("\nInvalid choice.")
