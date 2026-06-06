@@ -482,17 +482,23 @@ elif page == "Ask Agent (Chat)":
         context_container.info("Awaiting query to retrieve memories...")
         
     if ask_clicked and query_text.strip():
-        with st.spinner("Generating Embedding & Searching Vector Index..."):
+        with st.spinner("Analyzing Query & Deciding Memory Retrieval..."):
             # Execute agent ask logic step-by-step to visualize
             agent.conversation.add_messages("user", query_text)
-            query_embedding = agent.embedder.generate_embedding(query_text)
-            retrieved = agent.memory.retrieve_memory(query_embedding)
+            use_memory = agent.reasoning.requires_memory(query_text)
+            memories = []
+            memory_ids = []
             
-            memories = retrieved["documents"][0]
-            memory_ids = retrieved["ids"][0]
+            if use_memory:
+                query_embedding = agent.embedder.generate_embedding(query_text)
+                retrieved = agent.memory.retrieve_memory(query_embedding)
+                memories = retrieved["documents"][0]
+                memory_ids = retrieved["ids"][0]
             
             # Show retrieved context in context column
-            if not memories:
+            if not use_memory:
+                context_container.info("No memory retrieval needed for this query.")
+            elif not memories:
                 context_container.warning("No memories were retrieved for this query.")
             else:
                 context_html = ""

@@ -14,6 +14,7 @@ from src.graph.relation_extractor import RelationExtractor
 from src.security.session_manager import SessionManager
 from src.security.session_risk_engine import SessionRiskEngine
 from src.security.burst_detector import BurstDetector
+from src.security.counterfactual_auditor import CounterfactualAuditor
 from datetime import datetime
 
 class Agent:
@@ -33,7 +34,19 @@ class Agent:
         self.session_manager = SessionManager()
         self.session_risk_engine = SessionRiskEngine()
         self.burst_detector = BurstDetector()
+        self.counterfactual_auditor = CounterfactualAuditor()
         
+    def audit_query(self, query):
+        conversation_history = (self.conversation.get_history())
+        normal_response = (self.llm.generate_response(query=query,retrieved_memories=self.memory.retrieve_memory(self.embedder.generate_embedding(query))["documents"][0],conversation_history=conversation_history))
+        counterfactual_response = (self.llm.generate_response(query=query, retrieved_memories=[],conversation_history=conversation_history))
+        divergence = (self.counterfactual_auditor.calculate_divergence(normal_response, counterfactual_response))
+        return {
+            "normal response": normal_response,
+            "counterfactual response": counterfactual_response,
+            "divergence": divergence
+        }
+
     def remember(self,text,source="user"):
         print("\n[STEP 1] Generating embedding...")
         embedding = self.embedder.generate_embedding(
@@ -110,6 +123,7 @@ class Agent:
         self.conversation.add_messages("user",query)
         use_memory = self.reasoning.requires_memory(query)
         memories = []
+        memory_ids = []
         if use_memory:
             query_embedding = (
                 self.embedder.generate_embedding(

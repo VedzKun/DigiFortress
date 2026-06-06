@@ -1,15 +1,35 @@
 # Memory classifier for categorizing semantic memories
+import ollama
+
 class MemoryClassifier:
-    def classify(self,text):
-        text = text.lower()
-        if "like" in text or "prefer" or "enjoy" or "love" or "fond of" in text:
-            return "preference"
-        elif "hate" or "dislike" or "don't like" or "dont like" in text:
-            return "preference"
-        elif "task" or "work" or "to-do" in text:
-            return "task"
-        elif "remember" or "recall" or "think" in text:
-            return "instruction"
-        else:
+    def __init__(self):
+        self.model = "qwen2.5:7b"
+
+    def classify(self, text):
+        prompt = f"""
+Classify the following memory text into exactly ONE of these categories:
+- preference
+- task
+- instruction
+- fact
+
+Return ONLY the category name. Do not include any other text.
+
+Memory text:
+{text}
+"""
+        try:
+            response = ollama.chat(
+                model=self.model,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            content = response["message"]["content"].strip().lower()
+            if content in ["preference", "task", "instruction", "fact"]:
+                return content
+            else:
+                return "fact"
+        except Exception as e:
+            print(f"Error in LLM memory classification: {e}")
             return "fact"
-        

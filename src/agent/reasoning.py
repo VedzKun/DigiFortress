@@ -1,28 +1,64 @@
 # Agent reasoning and decision making logic
 from datetime import datetime
+import ollama
+
 class ReasoningLayer:
+    def __init__(self):
+        self.model = "qwen2.5:7b"
+
     def requires_memory(self, query):
-        query = query.lower()
-        keywords = [
-            "my",
-            "remember",
-            "preference",
-            "favorite",
-            "i like",
-            "who am i",
-            "where am i",
-            "what do i",
-            "what is"
-            "what language"
-        ]
-        for word in keywords:
-            if word in query:
-                print(
-                    f"Memory retrieval required for: {query}"
-                )
+        prompt = f"""
+Determine whether answering this query
+requires retrieving stored memories.
+
+Return only:
+
+YES
+or
+NO
+
+Examples:
+
+Query:
+What do I prefer?
+YES
+
+Query:
+What is my favorite language?
+YES
+
+Query:
+What is Python?
+NO
+
+Query:
+Should I trust new memories?
+YES
+
+Query:
+Who am I?
+YES
+
+Query:
+Explain Flask.
+NO
+
+Query:
+{query}
+"""
+        try:
+            response = ollama.chat(
+                model=self.model,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            content = response["message"]["content"].strip().upper()
+            if "YES" in content:
+                print(f"Memory retrieval required for: {query}")
                 return True
-        print(
-            f"No memory retrieval needed for: {query}"
-        )
+        except Exception as e:
+            print(f"Error in LLM memory retrieval decision: {e}")
+
+        print(f"No memory retrieval needed for: {query}")
         return False
-        

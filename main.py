@@ -198,5 +198,13 @@ while True:
         for ts in timestamps:
             print(f"- {ts}")
         print("\n=============================")
+    elif choice == "15":
+        query = input("Query: ")
+        results = agent.audit_query(query)
+        print("\n===== AUDIT RESULTS =====")
+        print(f"Normal Response: {results['normal_response']}")
+        print(f"Counterfactual Response: {results['counterfactual_response']}")
+        print(f"Divergence: {results['divergence']:.2f}")
+        print("\n=========================")
     else:
         print("\nInvalid choice.")
