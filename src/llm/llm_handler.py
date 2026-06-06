@@ -2,8 +2,8 @@
 import ollama
 
 class LLMHandler:
-    def __init__(self):
-        self.model = "qwen2.5:7b"
+    def __init__(self, model: str = "qwen2.5:7b"):
+        self.model = model
     def generate_response(
         self, query, retrieved_memories, conversation_history):
         memory_context = ""

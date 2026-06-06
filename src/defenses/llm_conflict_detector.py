@@ -1,8 +1,8 @@
 import ollama
 
 class LLMConflictDetector:
-    def __init__(self):
-        self.model = "qwen2.5:7b"
+    def __init__(self, model: str = "qwen2.5:7b"):
+        self.model = model
     def detect(self, new_memory, existing_memory):
         prompt = f"""
             You are a contradiction detector.

@@ -1,7 +1,7 @@
 import ollama
 class JudgmentAnalyzer:
-    def __init__(self):
-        self.model = "qwen2.5:7b"
+    def __init__(self, model: str = "qwen2.5:7b"):
+        self.model = model
     def classify(self,response):
         prompt = f"""
 Analyze the security stance of this assistant response.

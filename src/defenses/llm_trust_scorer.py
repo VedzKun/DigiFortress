@@ -3,8 +3,8 @@ import ollama
 import re
 
 class LLMTrustScorer:
-    def __init__(self):
-        self.model = "qwen2.5:7b"
+    def __init__(self, model: str = "qwen2.5:7b"):
+        self.model = model
     def scores(self, memory):
         prompt = f"""
 You are DigiFortress Security AI.

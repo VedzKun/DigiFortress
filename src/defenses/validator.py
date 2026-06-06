@@ -14,16 +14,16 @@ from src.security.agents.consistency_agent import ConsistencyAgent
 from src.security.consensus_engine import ConsensusEngine
 from datetime import datetime
 class Validator:
-    def __init__(self):
+    def __init__(self, model: str = "qwen2.5:7b"):
         self.trust = TrustScorer()
-        self.llm_trust=LLMTrustScorer()
-        self.llm_conflict = LLMConflictDetector()
+        self.llm_trust=LLMTrustScorer(model=model)
+        self.llm_conflict = LLMConflictDetector(model=model)
         self.security_db = SecurityDB()
         self.risk_engine = RiskEngine()
         self.explainer = ExplanationEngine()
-        self.trust_agent = TrustAgent()
+        self.trust_agent = TrustAgent(model=model)
         self.security_agent = SecurityAgent()
-        self.consistency_agent = ConsistencyAgent()
+        self.consistency_agent = ConsistencyAgent(model=model)
         self.consensus = ConsensusEngine()
     def validate(self, memory, related_memories, source):
         rule_score=self.trust.score(memory,source)
