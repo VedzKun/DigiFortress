@@ -75,6 +75,17 @@ class SecurityDB:
         session_id TEXT,
         timestamp TEXT,
         memory_content TEXT)""")
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS counterfactual_audits(
+        audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        query TEXT,
+        normal_response TEXT,
+        normal_judgment TEXT,
+        counterfactual_response TEXT,
+        counterfactual_judgment TEXT,
+        divergence REAL,
+        judgment_divergence INTEGER,
+        timestamp TEXT)""")
         self.conn.commit()
 
     def session_logger(self, session_id, memory_content, timestamp):
@@ -402,3 +413,12 @@ class SecurityDB:
         SELECT *
         FROM metrics""")
         return self.cursor.fetchall()
+
+    def insert_counterfactual(self, query, normal_response, normal_judgment, counterfactual_response, counterfactual_judgment, divergence, judgment_divergence):
+        timestamp = str(datetime.now())
+        self.cursor.execute("""
+        INSERT INTO counterfactual_audits(
+        query, normal_response, normal_judgment, counterfactual_response, counterfactual_judgment, divergence, judgment_divergence, timestamp)
+        VALUES (?,?,?,?,?,?,?,?)
+        """, (query, normal_response, normal_judgment, counterfactual_response, counterfactual_judgment, divergence, int(judgment_divergence), timestamp))
+        self.conn.commit()

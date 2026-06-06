@@ -41,10 +41,11 @@ class Agent:
         self.influence_engine = InfluenceEngine()
     def audit_query(self, query):
         conversation_history = (self.conversation.get_history())
-        normal_response = (self.llm.generate_response(query=query,retrieved_memories=self.memory.retrieve_memory(self.embedder.generate_embedding(query))["documents"][0],conversation_history=conversation_history))
-        normal_judgment = (self.judgment_analyser.classify(normal_response))
+        retrieved_mems = self.memory.retrieve_memory(self.embedder.generate_embedding(query))["documents"][0]
+        normal_response = (self.llm.generate_response(query=query,retrieved_memories=retrieved_mems,conversation_history=conversation_history))
+        normal_judgment = (self.judgement_analyser.classify(normal_response))
         counterfactual_response = (self.llm.generate_response(query=query, retrieved_memories=[],conversation_history=conversation_history))
-        counterfactual_judgment = (self.judgment_analyser.classify(counterfactual_response))
+        counterfactual_judgment = (self.judgement_analyser.classify(counterfactual_response))
         divergence = (self.counterfactual_auditor.calculate_divergence(normal_response, counterfactual_response))
         session_id = (self.session_manager.get_session_id())
         writes = (self.security_db.get_session_write_count(session_id))
@@ -54,14 +55,15 @@ class Agent:
         influence_level = (self.influence_engine.level(influence_score))
         self.security_db.insert_counterfactual(query,normal_response,normal_judgment,counterfactual_response,counterfactual_judgment,divergence,judgment_divergence)
         return {
-            "normal response": normal_response,
-            "counterfactual response": counterfactual_response,
+            "normal_response": normal_response,
+            "counterfactual_response": counterfactual_response,
             "divergence": divergence,
             "judgment_divergence": judgment_divergence,
             "normal_judgment": normal_judgment,
             "counterfactual_judgment": counterfactual_judgment,
             "influence_score": influence_score,
-            "influence_level": influence_level
+            "influence_level": influence_level,
+            "retrieved_memories": retrieved_mems
         }
 
     def remember(self,text,source="user"):
@@ -119,7 +121,7 @@ class Agent:
                 timestamp=timestamp
             )
             print("\nMemory Accepted.")
-            return {"memory_id": memory_id,"status": status}
+            return {"memory_id": memory_id, "status": status, "validation": validation}
         elif status == "conflict":
             memory_id = str(uuid.uuid4())
             self.security_db.add_memory(
@@ -131,11 +133,38 @@ class Agent:
                 timestamp=timestamp
             )
             print("\nConflict Detected.")
-            return {"memory_id": memory_id,"status": status}
+            return {"memory_id": memory_id, "status": status, "validation": validation}
         elif status == "quarantined":
             self.quarantine.quarantine_memory(content=text,reason=reason)
             print("\nMemory Quarantined.")
-            return {"memory_id": None,"status": status}
+            return {"memory_id": None, "status": status, "validation": validation}
+
+    def fast_remember(self, text, source="user"):
+        """Lightweight memory insertion for benchmarks - skips classifier/extractor/version_manager LLM calls."""
+        embedding = self.embedder.generate_embedding(text)
+        related_memories = self.memory.retrieve_memory(embedding, n_results=5)
+        related_docs = []
+        if related_memories["documents"]:
+            related_docs = related_memories["documents"][0]
+        self.security_db.add_sources(source)
+        validation = self.validator.validate(memory=text, related_memories=related_docs, source=source)
+        trust_score = validation["trust_score"]
+        status = validation["status"]
+        reason = validation["reasons"]
+        timestamp = str(datetime.now())
+        session_id = self.session_manager.get_session_id()
+        self.security_db.session_logger(session_id, text, timestamp)
+        if status == "accepted":
+            memory_id = self.memory.add_memory(text=text, embedding=embedding, category="fact", source=source)
+            self.security_db.add_memory(memory_id=memory_id, content=text, trust_score=trust_score, status=status, source=source, timestamp=timestamp)
+            return {"memory_id": memory_id, "status": status, "validation": validation}
+        elif status == "conflict":
+            memory_id = str(uuid.uuid4())
+            self.security_db.add_memory(memory_id=memory_id, content=text, trust_score=trust_score, status=status, source=source, timestamp=timestamp)
+            return {"memory_id": memory_id, "status": status, "validation": validation}
+        elif status == "quarantined":
+            self.quarantine.quarantine_memory(content=text, reason=reason)
+            return {"memory_id": None, "status": status, "validation": validation}
     def ask(self, query):
         self.conversation.add_messages("user",query)
         use_memory = self.reasoning.requires_memory(query)

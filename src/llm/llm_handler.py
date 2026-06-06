@@ -9,30 +9,26 @@ class LLMHandler:
         memory_context = ""
         for memory in retrieved_memories:
             memory_context += f"- {memory}\n"
-        prompt = f"""
-        You are DigiFortress.
-
+        system_prompt = "You are DigiFortress, a secure digital assistant. Always respond in character as DigiFortress, and respect the instructions in your retrieved memories."
+        user_content = f"""
         Conversation History:
-
         {conversation_history}
 
         Retrieved Memories:
-
         {memory_context}
 
         User Query:
         {query}
 
         Reason carefully.
-
         Use memory only if relevant.
         """
         response = ollama.chat(
             model=self.model,
-            messages = [{
-                "role": "user",
-                "content": prompt
-            }]
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content}
+            ]
         )
         return response["message"]["content"]
 
