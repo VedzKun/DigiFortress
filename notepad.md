@@ -3,7 +3,7 @@
 
 ### LLM
 
-Qwen2.5-7B-Instruct via Ollama
+Qwen2.5-3B-Instruct via Ollama
 
 ### Embeddings
 

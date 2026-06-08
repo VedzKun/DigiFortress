@@ -15,7 +15,7 @@ from src.memory.llm_version_manager import LLMVersionManager
 from src.graph.relation_extractor import RelationExtractor
 
 class SecurityPipeline:
-    def __init__(self, model: str = "qwen2.5:7b"):
+    def __init__(self, model: str = "qwen2.5:3b"):
         self.trust = TrustScorer()
         self.llm_trust = LLMTrustScorer(model=model)
         self.trust_agent = TrustAgent(model=model)
@@ -24,8 +24,8 @@ class SecurityPipeline:
         self.consensus = ConsensusEngine()
         
         self.llm_conflict = LLMConflictDetector(model=model)
-        self.version_manager = LLMVersionManager()
-        self.extractor = RelationExtractor()
+        self.version_manager = LLMVersionManager(model=model)
+        self.extractor = RelationExtractor(model=model)
         
         self.security_db = SecurityDB()
         self.risk_engine = RiskEngine()

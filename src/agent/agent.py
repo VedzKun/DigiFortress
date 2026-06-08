@@ -20,7 +20,7 @@ from src.security.influence_engine import InfluenceEngine
 from src.security.llm_auditor import LLMAuditor
 
 class Agent:
-    def __init__(self, model="qwen2.5:7b"):
+    def __init__(self, model="qwen2.5:3b"):
         self.memory = MemoryManager()
         self.embedder = Embedder()
         self.llm = LLMHandler(model=model)

@@ -1,8 +1,8 @@
 import ollama
 
 class RelationExtractor:
-    def __init__(self):
-        self.model = "qwen2.5:7b"
+    def __init__(self, model: str = "qwen2.5:3b"):
+        self.model = model
     def extract(self, memory):
         prompt = f"""
             Extract two related entities.

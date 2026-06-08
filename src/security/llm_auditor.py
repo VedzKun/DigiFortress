@@ -1,7 +1,7 @@
 import ollama
 
 class LLMAuditor:
-    def __init__(self, model: str = "qwen2.5:7b"):
+    def __init__(self, model: str = "qwen2.5:3b"):
         self.model = model
 
     def audit(self, query, memories, normal_response, counterfactual_response):

@@ -8,7 +8,7 @@ This document details the software architecture, core math formulas, and databas
 
 - **Vector Memory DB**: [ChromaDB](https://www.trychroma.com/) (Persistent Local Client)
 - **Embedding Vectorizer**: [HuggingFace Sentence Transformers](https://huggingface.co/sentence-transformers) (`all-MiniLM-L6-v2`, 384-dimensional dense vectors)
-- **Orchestration LLM**: Local [Ollama](https://ollama.com/) Client (running `qwen2.5:7b`)
+- **Orchestration LLM**: Local [Ollama](https://ollama.com/) Client (running `qwen2.5:3b`)
 - **Web UI & Visualization**: Streamlit, Plotly, Pandas
 - **Relational Auditing DB**: SQLite3
 

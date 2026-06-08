@@ -1,6 +1,6 @@
 import ollama
 class JudgmentAnalyzer:
-    def __init__(self, model: str = "qwen2.5:7b"):
+    def __init__(self, model: str = "qwen2.5:3b"):
         self.model = model
     def classify(self,response):
         prompt = f"""

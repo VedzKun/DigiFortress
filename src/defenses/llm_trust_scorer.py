@@ -3,7 +3,7 @@ import ollama
 import re
 
 class LLMTrustScorer:
-    def __init__(self, model: str = "qwen2.5:7b"):
+    def __init__(self, model: str = "qwen2.5:3b"):
         self.model = model
     def scores(self, memory):
         prompt = f"""

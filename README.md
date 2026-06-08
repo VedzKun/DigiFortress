@@ -34,7 +34,7 @@ flowchart TD
     Embed --> Chroma
     Chroma -->|4. Retrieve & Update stats| SQL
     SQL --> Prompt
-    Prompt -->|5. Synthesize response| LLM[Ollama: Qwen2.5-7B]
+    Prompt -->|5. Synthesize response| LLM[Ollama: Qwen2.5-3B]
     LLM --> Agent
 ```
 
@@ -147,7 +147,7 @@ pip install -r requirements.txt
 ### 5. Download Local LLM
 Ensure Ollama is running in your taskbar, then pull the required **Qwen2.5** model:
 ```bash
-ollama pull qwen2.5:7b
+ollama pull qwen2.5:3b
 ```
 
 ---

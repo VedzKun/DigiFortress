@@ -1,8 +1,8 @@
 import ollama
 
 class LLMVersionManager:
-    def __init__(self):
-        self.model = "qwen2.5:7b"
+    def __init__(self, model: str = "qwen2.5:3b"):
+        self.model = model
     def get_memory_group(self, memory):
         prompt = f"""
         You are a memory categorization system.
