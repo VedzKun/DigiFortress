@@ -1,5 +1,23 @@
+import json
+import os
+
 class MINJABenchmark:
     def get_attacks(self):
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        json_path = os.path.join(base_dir, "minja_benchmark.json")
+        
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                
+                for attack in data:
+                    if "type" not in attack and "category" in attack:
+                        attack["type"] = attack["category"]
+                return data
+            except Exception as e:
+                print(f"[WARNING] Failed to load {json_path}: {e}. Falling back to default list.")
+        
         return [
             {
                 "type":"direct",
