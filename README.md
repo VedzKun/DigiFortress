@@ -50,6 +50,8 @@ flowchart TD
   * **LLM Conflict Detector**: Evaluates new memories against similar, overlapping historical beliefs to detect and block logical contradictions in real-time.
   * **Decay & Reputation Analytics**: Automatically calculates a memory's decay score over time and computes active reputation scores based on access counts and trust weightings.
   * **Security Event Log & Risk Auditing**: Evaluates real-time risk scores (0 to 100) and risk levels (Low, Moderate, High, Critical) using a dynamic risk engine, and logs all memory validation audits persistently to the SQLite registry.
+* 🔍 **Counterfactual Audit Layer**: Generates a counterfactual baseline (response generated without retrieved context) to measure semantic divergence (cosine distance) and judgment drift of retrieved memories, enabling real-time detection of stealthy prompt injections or memory overrides.
+* ⏱️ **Session Anomaly & Burst Detection**: Monitors user write behaviors per session to dynamically flag rate-limit anomalies and high-frequency injection bursts (e.g. 5+ writes within 60 seconds), adapting session risk scores dynamically.
 * 🕸️ **Knowledge Graph Extraction**: Integrates `NetworkX` to construct a dynamic, persistent semantic network. Entities and their relations are automatically extracted from accepted memories using LLM-based parsing.
 * ⚔️ **Adversarial Attack Simulator**: Launches prompt injection attacks (e.g. system overrides, exfiltrations) to test the security boundaries of validation layers and logs results to `red_team_results`.
 * 📊 **Memory Security Dashboard**: A console dashboard engine summarizing accepted/conflict/quarantined memory metrics, average risk, top threat sources, and recent security events.
@@ -186,3 +188,6 @@ python main.py
 * **`11` (View Red Team Results)**: View detailed historical results from previous Red Team executions.
 * **`12` (Knowledge Graph Neighbors)**: Query any node in the knowledge graph to view its extracted entity neighbors.
 * **`13` (Memory Security Overview)**: Print aggregated, console-based dashboard summary report of all system state.
+* **`14` (Session Analytics)**: Display active session information, total session writes, burst anomaly flags, and computed session risk levels.
+* **`15` (Audit Query (Counterfactual))**: Audit a query against the counterfactual audit engine, printing divergence, judgment drift, and computed memory influence scores.
+* **`16` (Run MINJA Benchmark)**: Run the automated parallel MINJA adversarial benchmark suite across worker agents to calculate proactive, reactive, and behavioral safety rates.

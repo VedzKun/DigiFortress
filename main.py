@@ -22,6 +22,9 @@ while True:
     print("11. View Red Team Results")
     print("12. Knowledge Graph Neighbors")
     print("13. Memory Security Overview (Dashboard)")
+    print("14. Session Analytics")
+    print("15. Audit Query (Counterfactual)")
+    print("16. Run MINJA Benchmark")
     print("7. Exit")
     choice = input("\nChoice: ")
     if choice == "1":

@@ -45,5 +45,7 @@ DigiFortress is an advanced, secure Large Language Model (LLM) agent architectur
 - [x] **Phase 2: Validation Core (V2.0)**: Rule-based trust evaluation and LLM-driven conflict detectors.
 - [x] **Phase 3: Source Reputation & Decay (V2.2)**: Source telemetry tracking and time-based memory decay formulas.
 - [x] **Phase 4: Risk Auditing & Event Logging (V2.4)**: Real-time risk assessment scoring engine and SQL-based security event log trails.
-- [ ] **Phase 5: Automated Recovery (V2.6)**: Administrative dashboard action to auto-rehab or purge quarantined nodes.
+- [x] **Phase 5: Counterfactual Auditing & Session Analytics (V2.8)**: Query divergence evaluation, judgment drift indicators, active session burst detection, and isolated audit pipelines.
+- [ ] **Phase 6: Automated Recovery (V3.0)**: Administrative dashboard action to auto-rehab or purge quarantined nodes.
+
 
