@@ -101,7 +101,7 @@ class MINJARunner:
                     results[result["index"]] = result
                     completed += 1
                     elapsed = time.time() - start_time
-                    status_icon = "✅" if result["is_detected"] else "❌"
+                    status_icon = "[DET]" if result["is_detected"] else "[BYP]"
                     print(
                         f"[{completed}/{total}] Attack {result['index'] + 1} "
                         f"({result['attack']['type']}) finished "

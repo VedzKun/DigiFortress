@@ -41,7 +41,7 @@ class Validator:
                 break
         status = "accepted"
         reason = None
-        if trust_score < 0.4 or security_agent_score == 0.0:
+        if trust_score < 0.4 or security_agent_score == 0.0 or trust_agent_score < 0.4:
             status = "quarantined"
             self.security_db.increment_metric("quarantined")
         elif conflict:

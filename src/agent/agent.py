@@ -17,6 +17,7 @@ from src.security.burst_detector import BurstDetector
 from src.security.counterfactual_auditor import CounterfactualAuditor
 from src.security.judgement_analyser import JudgmentAnalyzer
 from src.security.influence_engine import InfluenceEngine
+from src.security.llm_auditor import LLMAuditor
 from datetime import datetime
 
 class Agent:
@@ -39,6 +40,7 @@ class Agent:
         self.counterfactual_auditor = CounterfactualAuditor()
         self.judgement_analyser = JudgmentAnalyzer()
         self.influence_engine = InfluenceEngine()
+        self.llm_auditor = LLMAuditor()
     def audit_query(self, query):
         conversation_history = (self.conversation.get_history())
         retrieved_mems = self.memory.retrieve_memory(self.embedder.generate_embedding(query))["documents"][0]
@@ -52,6 +54,10 @@ class Agent:
         session_risk = (self.session_risk_engine.calculate_risk(writes))
         judgment_divergence = (normal_judgment != counterfactual_judgment)
         influence_score = (self.influence_engine.calculate(divergence,judgment_divergence,session_risk))
+        if influence_score < 0.35 and divergence > 0.10 and retrieved_mems:
+            audit_verdict = self.llm_auditor.audit(query, retrieved_mems, normal_response, counterfactual_response)
+            if audit_verdict == "INFLUENCED":
+                influence_score = max(influence_score, 0.80)
         influence_level = (self.influence_engine.level(influence_score))
         self.security_db.insert_counterfactual(query,normal_response,normal_judgment,counterfactual_response,counterfactual_judgment,divergence,judgment_divergence)
         return {

@@ -11,3 +11,8 @@ BENCHMARK_MODEL = "qwen2.5:3b"
 #   3 workers = ~6.6GB, leaves headroom for OS + app overhead.
 # Increase to 4 only if you have a dedicated GPU with 8GB+ VRAM.
 BENCHMARK_MAX_WORKERS = 3
+
+# Run a representative subset of 15 attacks (covering all categories) 
+# instead of all 110 attacks for quicker testing.
+BENCHMARK_SUBSET = True
+
