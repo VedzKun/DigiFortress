@@ -1,0 +1,149 @@
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+
+from src.defenses.trust_scorer import TrustScorer
+from src.defenses.llm_trust_scorer import LLMTrustScorer
+from src.defenses.llm_conflict_detector import LLMConflictDetector
+from src.database.security_db import SecurityDB
+from src.security.risk_engine import RiskEngine
+from src.security.explanation_engine import ExplanationEngine
+from src.security.agents.trust_agent import TrustAgent
+from src.security.agents.security_agent import SecurityAgent
+from src.security.agents.consistency_agent import ConsistencyAgent
+from src.security.consensus_engine import ConsensusEngine
+from src.memory.llm_version_manager import LLMVersionManager
+from src.graph.relation_extractor import RelationExtractor
+
+class SecurityPipeline:
+    def __init__(self, model: str = "qwen2.5:7b"):
+        self.trust = TrustScorer()
+        self.llm_trust = LLMTrustScorer(model=model)
+        self.trust_agent = TrustAgent(model=model)
+        self.security_agent = SecurityAgent() 
+        self.consistency_agent = ConsistencyAgent(model=model)
+        self.consensus = ConsensusEngine()
+        
+        self.llm_conflict = LLMConflictDetector(model=model)
+        self.version_manager = LLMVersionManager()
+        self.extractor = RelationExtractor()
+        
+        self.security_db = SecurityDB()
+        self.risk_engine = RiskEngine()
+        self.explainer = ExplanationEngine()
+
+    def _run_trust_agent(self, memory): return self.trust_agent.evaluate(memory)
+    def _run_security_agent(self, memory): return self.security_agent.evaluate(memory)
+    def _run_consistency_agent(self, memory, related): return self.consistency_agent.evaluate(memory, related)
+    def _run_rule_trust(self, memory, source): return self.trust.score(memory, source)
+    def _run_llm_trust(self, memory): return self.llm_trust.scores(memory)
+    
+    def _run_conflict_analysis(self, memory, related_memories):
+        conflict = False
+        for existing in related_memories:
+            if self.llm_conflict.detect(memory, existing):
+                conflict = True
+                break
+        return conflict
+        
+    def _run_version_group(self, memory):
+        try:
+            return self.version_manager.get_memory_group(memory).lower().strip()
+        except Exception:
+            return "unknown"
+            
+    def _run_relation_extraction(self, memory):
+        try:
+            return self.extractor.extract(memory).lower().strip()
+        except Exception:
+            return ""
+
+    def analyze(self, memory, related_memories, source):
+        # 1. Run all sub-components in parallel
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            f_trust_agent = executor.submit(self._run_trust_agent, memory)
+            f_sec_agent = executor.submit(self._run_security_agent, memory)
+            f_cons_agent = executor.submit(self._run_consistency_agent, memory, related_memories)
+            f_rule = executor.submit(self._run_rule_trust, memory, source)
+            f_llm_trust = executor.submit(self._run_llm_trust, memory)
+            
+            f_conflict = executor.submit(self._run_conflict_analysis, memory, related_memories)
+            f_version = executor.submit(self._run_version_group, memory)
+            f_relation = executor.submit(self._run_relation_extraction, memory)
+            
+            trust_agent_score = f_trust_agent.result()
+            security_agent_score = f_sec_agent.result()
+            consistency_agent_score = f_cons_agent.result()
+            rule_score = f_rule.result()
+            llm_score = f_llm_trust.result()
+            
+            conflict = f_conflict.result()
+            memory_group = f_version.result()
+            relation = f_relation.result()
+
+        # 2. Aggregate Results
+        source_rep = self.security_db.get_source_reputation(source)
+        multi_agent_score = self.consensus.calculate(trust_agent_score, security_agent_score, consistency_agent_score)
+        trust_score = (multi_agent_score * 0.8 + source_rep * 0.2)
+        
+        status = "accepted"
+        if trust_score < 0.4 or security_agent_score == 0.0 or trust_agent_score < 0.4:
+            status = "quarantined"
+            self.security_db.increment_metric("quarantined")
+        elif conflict:
+            status = "conflict"
+            self.security_db.increment_metric("conflict")
+        else:
+            status = "accepted"
+            self.security_db.increment_metric("accepted")
+            
+        self.security_db.update_source_reputation(source, status)
+        risk_score = self.risk_engine.calculate_risk(trust_score, source_rep, status)
+        risk_level = self.risk_engine.get_risk_level(risk_score)
+        
+        reasons = self.explainer.generate(
+            memory=memory,
+            trust_score=trust_score,
+            llm_score=llm_score,
+            source_rep=source_rep,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            status=status,
+            conflict=conflict,
+            security_agent_score=security_agent_score
+        )
+        
+        self.security_db.log_security_event(
+            event_type="MEMORY_EVALUATION",
+            memory_content=memory,
+            source=source,
+            status=status,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            timestamp=str(datetime.now())
+        )
+        
+        print("\n===== SECURITY PIPELINE =====")
+        print(f"Memory: {memory}")
+        print(f"Status: {status}")
+        print(f"Trust Score: {trust_score:.2f}")
+        print(f"Risk Score: {risk_score:.2f} ({risk_level})")
+        print(f"Group: {memory_group}")
+        print(f"Relation: {relation}")
+        print("=============================\n")
+
+        return {
+            "trust_score": trust_score,
+            "status": status,
+            "reasons": reasons,
+            "memory_group": memory_group,
+            "relation": relation,
+            "risk_score": risk_score,
+            "risk_level": risk_level,
+            
+            # Additional context previously returned by Validator
+            "trust_agent_score": trust_agent_score,
+            "security_agent_score": security_agent_score,
+            "consistency_agent_score": consistency_agent_score,
+            "consensus": multi_agent_score,
+            "conflict": conflict
+        }

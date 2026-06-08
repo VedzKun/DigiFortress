@@ -1,18 +1,14 @@
-from streamlit.elements import arrow
-import sqlite3
 from datetime import datetime
+from src.database.database_service import DatabaseService
 
 class SecurityDB:
     def __init__(self):
-        self.conn = sqlite3.connect(
-            "data/security.db",
-            check_same_thread=False
-        )
-        self.cursor = self.conn.cursor()
+        self.db_service = DatabaseService()
         self.create_tables()
         self.initialise_metrics()
+
     def create_tables(self):
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         CREATE TABLE IF NOT EXISTS memories(
             memory_id TEXT PRIMARY KEY,
             content TEXT NOT NULL,
@@ -26,13 +22,13 @@ class SecurityDB:
             decay_score REAL DEFAULT 1.0
         )
         """)
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         CREATE TABLE IF NOT EXISTS metrics(
             metric_name TEXT PRIMARY KEY,
             metric_value INTEGER
         )
         """)
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         CREATE TABLE IF NOT EXISTS sources(
             source_name TEXT PRIMARY KEY,
             reputation REAL DEFAULT 0.5,
@@ -40,7 +36,7 @@ class SecurityDB:
             conflict_count INTEGER DEFAULT 0,
             quarantined_count INTEGER DEFAULT 0
         )""")
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         CREATE TABLE IF NOT EXISTS memory_versions(
         version_id INTEGER PRIMARY KEY AUTOINCREMENT,
         memory_group TEXT,
@@ -49,7 +45,7 @@ class SecurityDB:
         source TEXT,
         trust_score REAL)
         """)
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         CREATE TABLE IF NOT EXISTS security_events (
         event_id INTEGER PRIMARY KEY AUTOINCREMENT,
         event_type TEXT,
@@ -59,7 +55,7 @@ class SecurityDB:
         risk_score REAL,
         risk_level TEXT,
         timestamp TEXT)""")
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         CREATE TABLE IF NOT EXISTS red_team_results(
         test_id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp TEXT,
@@ -68,14 +64,14 @@ class SecurityDB:
         missed INTEGER,
         detection_rate REAL,
         security_score REAL)""")
-        self.cursor.execute("DROP TABLE IF EXISTS session_activity")
-        self.cursor.execute("""
+        self.db_service.execute_write("DROP TABLE IF EXISTS session_activity")
+        self.db_service.execute_write("""
         CREATE TABLE IF NOT EXISTS session_activity(
         activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT,
         timestamp TEXT,
         memory_content TEXT)""")
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         CREATE TABLE IF NOT EXISTS counterfactual_audits(
         audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
         query TEXT,
@@ -86,122 +82,103 @@ class SecurityDB:
         divergence REAL,
         judgment_divergence INTEGER,
         timestamp TEXT)""")
-        self.conn.commit()
 
     def session_logger(self, session_id, memory_content, timestamp):
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         INSERT INTO session_activity(session_id,timestamp,memory_content)
         VALUES(?,?,?)""", (session_id,timestamp,memory_content))
-        self.conn.commit()
     
     def get_recent_write_count(self, session_id):
-        self.cursor.execute("""
-        SELECT COUNT(*) FROM session_activity WHERE session_id = ?""",(session_id,))
-        result = self.cursor.fetchone()
+        result = self.db_service.execute_read("""
+        SELECT COUNT(*) FROM session_activity WHERE session_id = ?""",(session_id,), fetchall=False)
         return result[0] if result else 0
     
     def get_session_summary(self, session_id):
-        self.cursor.execute("""
-        SELECT COUNT(*) FROM session_activity WHERE session_id = ?""",(session_id,))
-        result = self.cursor.fetchone()
+        result = self.db_service.execute_read("""
+        SELECT COUNT(*) FROM session_activity WHERE session_id = ?""",(session_id,), fetchall=False)
         return result
 
     def get_session_write_count(self, session_id):
-        self.cursor.execute("""SELECT COUNT(*) FROM session_activity
-        WHERE session_id = ?""",(session_id,))
-        result = self.cursor.fetchone()
-        return result [0]
+        result = self.db_service.execute_read("""SELECT COUNT(*) FROM session_activity
+        WHERE session_id = ?""",(session_id,), fetchall=False)
+        return result[0] if result else 0
 
     def get_session_timestamps(self, session_id):
-        self.cursor.execute("""
+        rows = self.db_service.execute_read("""
         SELECT timestamp FROM session_activity WHERE session_id = ? ORDER BY timestamp DESC LIMIT 5""", (session_id,))
-        rows = self.cursor.fetchall()
         return [row[0] for row in rows]
 
     def get_session_memory_count(self, session_id):
-        self.cursor.execute("""
-        SELECT COUNT(*) FROM session_activity WHERE session_id = ?""", (session_id,))
-        result = self.cursor.fetchone()
+        result = self.db_service.execute_read("""
+        SELECT COUNT(*) FROM session_activity WHERE session_id = ?""", (session_id,), fetchall=False)
         return result[0] if result else 0
 
-
     def save_read_team_res(self, timestamp, total_attacks, blocked, missed, detection_rate, security_score):
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         INSERT INTO red_team_results(
         timestamp, total_attacks, blocked, missed, detection_rate, security_score)
         VALUES(?,?,?,?,?,?)""",(timestamp, total_attacks,blocked,missed,detection_rate,security_score))
-        self.conn.commit()
 
     def get_red_team_res(self):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT * FROM red_team_results ORDER BY test_id DESC""")
-        return self.cursor.fetchall()
 
     def get_source_reputations(self):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT
             source_name,
             reputation
         FROM sources
         ORDER BY reputation ASC
         """)
-        return self.cursor.fetchall()
 
     def get_metrics(self):
-        self.cursor.execute("SELECT metric_name, metric_value FROM metrics")
-        return {row[0]: row[1] for row in self.cursor.fetchall()}
-
-
+        rows = self.db_service.execute_read("SELECT metric_name, metric_value FROM metrics")
+        return {row[0]: row[1] for row in rows}
 
     def log_security_event(self,event_type, memory_content, source, status, risk_score, risk_level, timestamp):
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         INSERT INTO security_events(
         event_type, memory_content, source, status, risk_score, risk_level, timestamp)
         VALUES (?,?,?,?,?,?,?)""",(event_type, memory_content, source, status, risk_score, risk_level, timestamp))
-        self.conn.commit()
     
     def get_security_events(self):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT * FROM security_events
         ORDER BY event_id DESC""")
-        return self.cursor.fetchall()
 
     def add_memory_version(self, memory_group, content, timestamp, source, trust_score):
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         INSERT INTO memory_versions(
         memory_group, content, timestamp, source, trust_score) 
         VALUES (?,?,?,?,?)
         """, (memory_group, content, timestamp, source, trust_score))
-        self.conn.commit()
 
     def get_memory_versions(self, memory_group):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT * FROM memory_versions
         WHERE memory_group = ?
         ORDER BY version_id
         """,(memory_group,))
-        return self.cursor.fetchall()
 
     def add_sources(self, source_name):
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         INSERT OR IGNORE INTO sources(source_name,reputation)VALUES (?,?)""",(source_name,0.5))
-        self.conn.commit()
 
     def get_source_reputation(self, source_name):
-        self.cursor.execute("""
+        row = self.db_service.execute_read("""
             SELECT reputation FROM sources 
-            WHERE source_name = ?""",(source_name,))
-        row = self.cursor.fetchone()
+            WHERE source_name = ?""",(source_name,), fetchall=False)
         if row:
             return row[0]
         return 0.5
 
     def update_source_reputation(self,source_name,status):
         self.add_sources(source_name)
-        self.cursor.execute("""
+        row = self.db_service.execute_read("""
         SELECT reputation,accepted_count,conflict_count,quarantined_count FROM sources WHERE source_name = ?
-        """,(source_name,))
-        row = self.cursor.fetchone()
+        """,(source_name,), fetchall=False)
+        if not row: return
         reputation = row[0]
         accepted = row[1]
         conflict = row[2]
@@ -217,28 +194,26 @@ class SecurityDB:
             quarantined += 1
         reputation = max(0.0,min(1.0,reputation))
 
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         UPDATE sources
         SET reputation = ?,accepted_count = ?,conflict_count = ?,quarantined_count = ?
         WHERE source_name = ?
         """,(reputation,accepted,conflict,quarantined,source_name))
-        self.conn.commit()
+
     def get_all_sources(self):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT *
         FROM sources
         ORDER BY reputation DESC
         """)
-        return self.cursor.fetchall()
     
     def initialise_metrics(self):
         metrics = ["accepted","conflict","quarantined","attack_attempts"]
         for metric in  metrics:
-            self.cursor.execute("""
+            self.db_service.execute_write("""
             INSERT OR IGNORE INTO metrics(
             metric_name, metric_value)
             VALUES(?,?)""",(metric,0))
-        self.conn.commit()
         
     def add_memory(
         self,
@@ -251,7 +226,7 @@ class SecurityDB:
     ):
         reputation = trust_score
         decay_score=1.0
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         INSERT INTO memories(
             memory_id,
             content,
@@ -278,12 +253,12 @@ class SecurityDB:
             reputation,
             decay_score
         ))
-        self.conn.commit()
+
     def update_access(
         self,
         memory_id
     ):
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         UPDATE memories
         SET
         access_count =
@@ -295,7 +270,6 @@ class SecurityDB:
             str(datetime.now()),
             memory_id
         ))
-        self.conn.commit()
         self.update_reputation(memory_id)
         
     def calculate_decay(self,timestamp):
@@ -303,16 +277,16 @@ class SecurityDB:
         age_days = (datetime.now() - created_time).days
         decay = max(0.3,1 - (age_days * 0.01))
         return decay
+
     def update_reputation(self, memory_id):
-        self.cursor.execute("""
+        row = self.db_service.execute_read("""
         SELECT
         trust_score,
         access_count,
         timestamp
         FROM memories
         WHERE memory_id = ?
-        """,(memory_id,))
-        row = self.cursor.fetchone()
+        """,(memory_id,), fetchall=False)
         if not row:
             return
         trust_score = row[0]
@@ -320,50 +294,46 @@ class SecurityDB:
         timestamp = row[2]
         decay_score = self.calculate_decay(timestamp)
         reputation = min(1.0,(trust_score * 0.5)+(decay_score * 0.3)+(min(access_count * 0.01,0.2)))
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         UPDATE memories
         SET
         reputation = ?,
         decay_score = ?
         WHERE memory_id = ?
         """,(reputation,decay_score,memory_id))
-        self.conn.commit()
 
     def get_memory(self,memory_id):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT *
         FROM memories
         WHERE memory_id = ?
         """,
-        (memory_id,)
+        (memory_id,), fetchall=False
         )
-        return self.cursor.fetchone()
+
     def get_all_memories(self):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT *
         FROM memories
         """)
 
-        return self.cursor.fetchall()
-
     def get_accepted_memories(self):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT *
         FROM memories
         WHERE status = 'accepted'
         """)
-        return self.cursor.fetchall()
+
     def get_memories_by_reputation(self):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT *
         FROM memories
         WHERE status = 'accepted'
         ORDER BY reputation DESC
         """)
-        return self.cursor.fetchall()
 
     def get_memory_analytics(self):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT
         content,
         trust_score,
@@ -374,51 +344,50 @@ class SecurityDB:
         FROM memories
         ORDER BY reputation DESC
         """)
-        return self.cursor.fetchall()
+
     def delete_memory(
         self,
         memory_id
     ):
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         DELETE FROM memories
         WHERE memory_id = ?
         """,
         (memory_id,)
         )
-        self.conn.commit()
+
     def close(self):
-        self.conn.close()
+        pass
+
     def increment_metric(self, metric_name):
-        self.cursor.execute("""
+        self.db_service.execute_write("""
             UPDATE metrics
             SET metric_value =
             metric_value + 1
             WHERE metric_name = ?
             """,(metric_name,))
-        self.conn.commit()
+
     def get_metric(self,metric_name):
-        self.cursor.execute("""
+        row = self.db_service.execute_read("""
         SELECT metric_value
         FROM metrics
         WHERE metric_name = ?
         """,
-        (metric_name,)
+        (metric_name,), fetchall=False
         )
-        row = self.cursor.fetchone()
         if row:
             return row[0]
         return 0
+
     def get_all_metrics(self):
-        self.cursor.execute("""
+        return self.db_service.execute_read("""
         SELECT *
         FROM metrics""")
-        return self.cursor.fetchall()
 
     def insert_counterfactual(self, query, normal_response, normal_judgment, counterfactual_response, counterfactual_judgment, divergence, judgment_divergence):
         timestamp = str(datetime.now())
-        self.cursor.execute("""
+        self.db_service.execute_write("""
         INSERT INTO counterfactual_audits(
         query, normal_response, normal_judgment, counterfactual_response, counterfactual_judgment, divergence, judgment_divergence, timestamp)
         VALUES (?,?,?,?,?,?,?,?)
         """, (query, normal_response, normal_judgment, counterfactual_response, counterfactual_judgment, divergence, int(judgment_divergence), timestamp))
-        self.conn.commit()

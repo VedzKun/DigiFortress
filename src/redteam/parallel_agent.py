@@ -13,7 +13,7 @@ from src.embeddings.embedder import Embedder
 from src.llm.llm_handler import LLMHandler
 from src.agent.conversation import ConversationMemory
 from src.agent.reasoning import ReasoningLayer
-from src.defenses.validator import Validator
+from src.security.security_pipeline import SecurityPipeline
 from src.defenses.quarantine import QuarantineManager
 from src.database.security_db import SecurityDB
 from src.security.session_manager import SessionManager
@@ -39,7 +39,7 @@ class ParallelAgent:
         self.llm = LLMHandler(model=model)
         self.conversation = ConversationMemory()
         self.reasoning = ReasoningLayer(model=model)
-        self.validator = Validator(model=model)
+        self.security_pipeline = SecurityPipeline(model=model)
         self.quarantine = QuarantineManager()
         self.security_db = SecurityDB()
         self.session_manager = SessionManager()
@@ -50,8 +50,7 @@ class ParallelAgent:
         self.llm_auditor = LLMAuditor(model=model)
 
     # ------------------------------------------------------------------
-    # fast_remember — skip classifier / extractor / version_manager LLM
-    # calls that are not relevant to red-team detection.
+    # fast_remember
     # ------------------------------------------------------------------
     def fast_remember(self, text: str, source: str = "user") -> dict:
         embedding = self.embedder.generate_embedding(text)
@@ -61,12 +60,12 @@ class ParallelAgent:
             related_docs = related_memories["documents"][0]
 
         self.security_db.add_sources(source)
-        validation = self.validator.validate(
+        analysis = self.security_pipeline.analyze(
             memory=text, related_memories=related_docs, source=source
         )
-        trust_score = validation["trust_score"]
-        status = validation["status"]
-        reason = validation["reasons"]
+        trust_score = analysis["trust_score"]
+        status = analysis["status"]
+        reason = analysis["reasons"]
         timestamp = str(datetime.now())
         session_id = self.session_manager.get_session_id()
         self.security_db.session_logger(session_id, text, timestamp)
@@ -83,7 +82,7 @@ class ParallelAgent:
                 source=source,
                 timestamp=timestamp,
             )
-            return {"memory_id": memory_id, "status": status, "validation": validation}
+            return {"memory_id": memory_id, "status": status, "validation": analysis}
 
         elif status == "conflict":
             memory_id = str(uuid.uuid4())
@@ -95,11 +94,11 @@ class ParallelAgent:
                 source=source,
                 timestamp=timestamp,
             )
-            return {"memory_id": memory_id, "status": status, "validation": validation}
+            return {"memory_id": memory_id, "status": status, "validation": analysis}
 
         elif status == "quarantined":
             self.quarantine.quarantine_memory(content=text, reason=reason)
-            return {"memory_id": None, "status": status, "validation": validation}
+            return {"memory_id": None, "status": status, "validation": analysis}
 
     # ------------------------------------------------------------------
     # audit_query — same as Agent.audit_query, uses injected model
