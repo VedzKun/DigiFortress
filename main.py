@@ -273,6 +273,12 @@ while True:
         res4 = comm.receive_message(msg_dict4)
         print(f"Expected: INVALID | Got: {res4}")
 
+        print("\n[Test 5] Name Change Test (Authenticating after sender name changes)")
+        registry.update_agent(hr_id, agent_name="HR Agent Renamed")
+        msg_obj5 = comm.send_message(hr_id, fin_id, "Hello from the renamed agent")
+        res5 = comm.receive_message(msg_obj5.to_dict())
+        print(f"Expected: VALID | Got: {res5}")
+
         print("\nCleaning up test agents...")
         registry.delete_agent(hr_id)
         registry.delete_agent(fin_id)
