@@ -1,3 +1,8 @@
+from src.graph.agent_network_graph import AgentNetworkGraph
+from src.graph.trust_network import TrustNetwork
+from src.graph.influence_tracker import InfluenceTracker
+from src.graph.network_analyzer import NetworkAnalyzer
+
 class DashboardService:
     def __init__(self, security_db):
         self.db = security_db
@@ -44,7 +49,7 @@ class DashboardService:
         top_threats = self.db.get_source_reputations()[:5]
         recent_events = events[:5]
 
-        return {
+        result = {
             "accepted": accepted,
             "conflict": conflict,
             "quarantined": quarantined,
@@ -64,3 +69,45 @@ class DashboardService:
             "successful_containments": successful_containments,
             "compromised_agents": compromised_agents
         }
+
+        # TD-2.6 Graph Metrics
+        graph = AgentNetworkGraph(self.db)
+        graph.load_graph()
+        trust_net = TrustNetwork(graph)
+        influence = InfluenceTracker(graph)
+        analyzer = NetworkAnalyzer(graph)
+        
+        most_trusted = trust_net.get_most_trusted_agents()
+        least_trusted = trust_net.get_least_trusted_agents()
+        most_influential = influence.get_top_influencers()
+        critical_agents = analyzer.find_critical_agents()
+        
+        result["network_trust_score"] = round(trust_net.calculate_network_trust(), 2)
+        result["most_trusted_agent"] = most_trusted[0][0] if most_trusted else "None"
+        result["least_trusted_agent"] = least_trusted[0][0] if least_trusted else "None"
+        result["most_influential_agent"] = most_influential[0][0] if most_influential else "None"
+        result["most_critical_agent"] = critical_agents[0][0] if critical_agents else "None"
+        result["total_connections"] = metrics.get("total_connections", 0)
+
+        # TD-2.7 Benchmark metrics
+        bm_total = metrics.get("benchmark_attacks_run", 0)
+        bm_detected = metrics.get("benchmark_detected", 0)
+        bm_blocked = metrics.get("benchmark_blocked", 0)
+        bm_contained = metrics.get("benchmark_contained", 0)
+        bm_compromised = metrics.get("compromised_agents", 0) 
+        
+        if bm_total > 0:
+            bm_det_rate = (bm_detected / bm_total) * 100
+            bm_cont_rate = (bm_contained / bm_total) * 100
+            bm_prop_rate = (bm_compromised / bm_total) * 100
+            resilience_score = max(0.0, min(100.0, 100 - bm_prop_rate - (bm_compromised/bm_total)*100 + bm_cont_rate))
+        else:
+            bm_det_rate = bm_cont_rate = bm_prop_rate = 0.0
+            resilience_score = 100.0
+            
+        result["network_resilience_score"] = round(resilience_score, 1)
+        result["attack_detection_rate"] = round(bm_det_rate, 1)
+        result["containment_rate"] = round(bm_cont_rate, 1)
+        result["propagation_rate"] = round(bm_prop_rate, 1)
+
+        return result

@@ -8,8 +8,9 @@ from src.agent.agent_communication import AgentCommunication
 from src.agent.agent_authenticator import AgentAuthenticator
 from src.agent.agent_registry import AgentRegistry
 from src.agent.agent_network import AgentNetwork
-from src.security.cross_agent_validator import CrossAgentValidator
 from src.security.agent_poison_simulator import AgentPoisonSimulator
+from src.graph.agent_network_graph import AgentNetworkGraph
+from src.benchmarks.multi_agent_benchmark import MultiAgentBenchmark
 
 agent = Agent()
 simulator = PoisoningSimulator(agent)
@@ -34,6 +35,7 @@ while True:
     print("16. Run MINJA Benchmark")
     print("17. Test Agent Communication")
     print("18. Test Multi-Agent Validation & Poisoning")
+    print("19. Benchmark Multi-Agent Resilience (TD-2.6/2.7)")
     print("7. Exit")
     choice = input("\nChoice: ")
     if choice == "1":
@@ -182,6 +184,20 @@ while True:
         print(f"  Poisoning Attempts: {summary['poisoning_attempts']}")
         print(f"  Successful Containments: {summary['successful_containments']}")
         print(f"  Compromised Agents: {summary['compromised_agents']}")
+        print("----------------------------------")
+        print("Agent Trust Network Graph:")
+        print(f"  Network Trust Score: {summary['network_trust_score']}")
+        print(f"  Most Trusted Agent: {summary['most_trusted_agent']}")
+        print(f"  Least Trusted Agent: {summary['least_trusted_agent']}")
+        print(f"  Most Influential Agent: {summary['most_influential_agent']}")
+        print(f"  Most Critical Agent: {summary['most_critical_agent']}")
+        print(f"  Total Connections: {summary['total_connections']}")
+        print("----------------------------------")
+        print("Multi-Agent Attack Benchmarks:")
+        print(f"  Network Resilience Score: {summary['network_resilience_score']}")
+        print(f"  Attack Detection Rate: {summary['attack_detection_rate']}%")
+        print(f"  Containment Rate: {summary['containment_rate']}%")
+        print(f"  Propagation Rate: {summary['propagation_rate']}%")
         print("----------------------------------")
         print("Top Threat Sources:")
         if not summary['top_threat_sources']:
@@ -345,5 +361,43 @@ while True:
         for a_id in [hr_id, fin_id, sec_id, legal_id, unknown_id]:
             registry.delete_agent(a_id)
         print("==============================================")
+    elif choice == "19":
+        print("\n===== MULTI-AGENT RESILIENCE BENCHMARK =====")
+        db = agent.security_db
+        registry = AgentRegistry(db)
+        
+        print("\n[Test 1] Creating Ecosystem (HR, Finance, Security)...")
+        hr = registry.register_agent("HR Agent", "HR")
+        fin = registry.register_agent("Finance Agent", "Finance")
+        sec = registry.register_agent("Security Agent", "Security")
+        
+        hr_id = hr["agent_id"]
+        fin_id = fin["agent_id"]
+        sec_id = sec["agent_id"]
+
+        print("\n[Test 2] Triggering Communication to build Graph...")
+        comm = AgentCommunication(db)
+        try:
+            comm.send_message(hr_id, fin_id, "Budget approved")
+            comm.send_message(fin_id, sec_id, "Budget transferred")
+        except Exception as e:
+            pass
+        
+        graph = AgentNetworkGraph(db)
+        graph.load_graph()
+        print(f"Graph Nodes: {len(graph.get_graph().nodes)}")
+        print(f"Graph Edges: {len(graph.get_graph().edges)}")
+        
+        print("\n[Test 3, 4, 5] Running Multi-Agent Benchmark Suite & Resilience Analysis...")
+        from src.graph.network_analyzer import NetworkAnalyzer
+        analyzer = NetworkAnalyzer(graph)
+        benchmark = MultiAgentBenchmark(db, analyzer)
+        report = benchmark.execute_full_suite()
+        benchmark.print_report(report)
+        
+        print("\nCleaning up...")
+        for a_id in [hr_id, fin_id, sec_id]:
+            registry.delete_agent(a_id)
+        print("============================================")
     else:
         print("\nInvalid choice.")

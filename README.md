@@ -15,7 +15,7 @@ flowchart TD
     %% Short-term memory
     Agent -->|1. Store context| Conv[Conversation Memory]
     
-    %% Security validation pipeline on Remember
+    %% Security validation pipeline on Remember (Single-Agent)
     Agent -->|2. On Remember: Validate| Security[🛡️ Validator Core]
     Security -->|Rule-based & LLM Scorer| Trust{Trust Score >= 0.4?}
     Trust -->|No| Quarantine[🛑 Quarantine Containment]
@@ -36,6 +36,34 @@ flowchart TD
     SQL --> Prompt
     Prompt -->|5. Synthesize response| LLM[Ollama: Qwen2.5-3B]
     LLM --> Agent
+    
+    %% Multi-Agent Security Framework
+    subgraph MultiAgent[Multi-Agent Security & Governance Framework]
+        Comm[Agent Communication Client] -->|Sign & Send| Auth[Agent Authenticator]
+        Auth -->|Verify cryptographic keys| Registry[Agent Registry]
+        
+        Comm -->|Extract Claim| Broadcast[Agent Network Claim Broadcast]
+        Broadcast -->|Validate conflicting claims| CAV[Cross-Agent Validator]
+        CAV -->|Determine winner| Consensus[Consensus Engine]
+        
+        %% Graph & Metrics
+        Comm -->|Auto-register edge| Graph[Agent Network Graph]
+        Graph -->|Trust, Influence & Blame| NetAnalysis[Network Analyzer]
+        
+        %% Attacks & Benchmarks
+        Simulator[Poisoning Simulator] -->|Inject malicious claims| Broadcast
+        Benchmark[Resilience Benchmark Runner] -->|Attack library suite| Simulator
+        Benchmark -->|Evaluate containment| Report[Benchmark Report]
+        
+        %% Containment
+        Consensus -->|Low score / quarantine| Containment[Containment Engine]
+        Containment -->|Block messages / isolate| Comm
+    end
+
+    %% Database connections
+    Registry --> SQL
+    Graph --> SQL
+    Report --> SQL
 ```
 
 ---
@@ -58,6 +86,8 @@ flowchart TD
   * **Cross-Agent Validation**: Dynamically resolves conflicting claims across multiple agent sources using a reputation-weighted Consensus Engine.
   * **Cryptographic Agent Authentication**: Verifies inter-agent messages using immutable `agent_id` tracking and secret keys.
   * **Containment Engine & Poisoning Simulator**: Automatically simulates and tracks adversarial agent-poisoning cascades, blocking malicious broadcasts and quarantining compromised agents based on dynamic trust scores.
+  * **Agent Trust Network Graph**: Represents the entire multi-agent communication ecosystem as a NetworkX graph, persisting node links to SQLite, calculating topological metrics (degree/betweenness centrality), and tracking blast radius.
+  * **Multi-Agent Attack Benchmark**: Evaluates the network under an attack library of 10 distinct agent topologies (poisoning, exfiltration, privilege escalation) to compute a standard Resilience Score.
 * 📊 **Memory Security Dashboard**: A console dashboard engine summarizing accepted/conflict/quarantined memory metrics, average risk, top threat sources, and recent security events.
 * 🖥️ **Interactive Shell & Streamlit Web UI**: A standard console terminal menu, accompanied by a premium **Streamlit Web UI** visualising metrics and pipeline updates dynamically.
 
@@ -105,7 +135,18 @@ DigiFortress/
 │   │
 │   ├── graph/
 │   │   ├── knowledge_graph.py        # NetworkX semantic entity link network
-│   │   └── relation_extractor.py     # LLM-based entity-relation parser
+│   │   ├── relation_extractor.py     # LLM-based entity-relation parser
+│   │   ├── agent_network_graph.py    # NetworkX representation of agent ecosystem nodes/edges
+│   │   ├── trust_network.py          # Measures overall trust across agent connection paths
+│   │   ├── influence_tracker.py      # Tracks degree centrality to identify highly-linked agents
+│   │   ├── network_analyzer.py       # Identifies vulnerable/bottleneck agents using centrality
+│   │   └── propagation_graph.py      # Simulates and tracks compromise blast-radius paths
+│   │
+│   ├── benchmarks/
+│   │   ├── attack_library.py         # Curated multi-agent attack topology payloads
+│   │   ├── benchmark_runner.py       # Orchestrates and logs benchmark runs to SQLite
+│   │   ├── benchmark_report.py       # Summarizes detection, containment, and resilience
+│   │   └── multi_agent_benchmark.py  # Wrapper interface to run the full benchmark suite
 │   │
 │   ├── database/
 │   │   └── security_db.py      # SQLite analytics db tracking access, metrics & reputations
@@ -206,3 +247,4 @@ python main.py
 * **`16` (Run MINJA Benchmark)**: Run the automated parallel MINJA adversarial benchmark suite across worker agents to calculate proactive, reactive, and behavioral safety rates.
 * **`17` (Test Agent Communication)**: Verify immutable ID-based cryptographic signing of inter-agent messages.
 * **`18` (Test Multi-Agent Validation & Poisoning)**: Benchmark the Cross-Agent Validator by simulating contradictory network claims, agent poisoning cascades, and automatic containment blockages.
+* **`19` (Benchmark Multi-Agent Resilience)**: Run the automated multi-agent attack library against the ecosystem, build the network graph, analyze centrality metrics, and calculate the overall Network Resilience Score.

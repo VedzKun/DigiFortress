@@ -4,6 +4,7 @@ from src.agent.agent_authenticator import AgentAuthenticator
 from src.agent.agent_message import AgentMessage
 from src.agent.agent_registry import AgentRegistry
 from src.security.containment_engine import ContainmentEngine
+from src.graph.agent_network_graph import AgentNetworkGraph
 
 class AgentCommunication:
     """Handles agent-to-agent communication and validation."""
@@ -13,6 +14,7 @@ class AgentCommunication:
         self.registry = AgentRegistry(self.db)
         self.authenticator = AgentAuthenticator()
         self.containment = ContainmentEngine(self.db)
+        self.network_graph = AgentNetworkGraph(self.db)
 
     def send_message(self, sender_id: str, receiver_id: str, message_text: str) -> AgentMessage:
         """
@@ -24,6 +26,9 @@ class AgentCommunication:
         secret_key = self.db.get_agent_secret(sender_id)
         if not secret_key:
             raise ValueError(f"No secret key found for sender: {sender_id}")
+
+        # TD-2.6: Automatically create edge in the network graph
+        self.network_graph.add_connection(sender_id, receiver_id)
 
         signature = self.authenticator.sign_message(message_text, secret_key)
         timestamp = str(datetime.now())

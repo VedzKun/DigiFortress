@@ -123,6 +123,14 @@ class SecurityDB:
         target_agent TEXT,
         attack_depth INTEGER,
         timestamp TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS agent_network_edges(
+        source_agent TEXT,
+        target_agent TEXT,
+        trust_score REAL,
+        message_count INTEGER,
+        timestamp TEXT,
+        PRIMARY KEY (source_agent, target_agent))""")
 
     def session_logger(self, session_id, memory_content, timestamp):
         self.db_service.execute_write("""
@@ -251,7 +259,8 @@ class SecurityDB:
     def initialise_metrics(self):
         metrics = ["accepted","conflict","quarantined","attack_attempts", "auth_success", "auth_failed", "spoof_attempts", "unknown_agents",
                    "cross_agent_conflicts", "resolved_conflicts", "unresolved_conflicts", 
-                   "poisoning_attempts", "successful_containments", "compromised_agents"]
+                   "poisoning_attempts", "successful_containments", "compromised_agents",
+                   "total_connections", "benchmark_attacks_run", "benchmark_detected", "benchmark_blocked", "benchmark_contained"]
         for metric in  metrics:
             self.db_service.execute_write("""
             INSERT OR IGNORE INTO metrics(
@@ -573,3 +582,19 @@ class SecurityDB:
     def get_agent_poison_events(self):
         return self.db_service.execute_read("""
         SELECT * FROM agent_poison_events ORDER BY event_id DESC""")
+
+    # ── Agent Trust Network Graph ────────────────────────────────────────────
+
+    def add_network_edge(self, source_agent, target_agent, trust_score, timestamp):
+        self.db_service.execute_write("""
+        INSERT INTO agent_network_edges(source_agent, target_agent, trust_score, message_count, timestamp)
+        VALUES (?, ?, ?, 1, ?)
+        ON CONFLICT(source_agent, target_agent) DO UPDATE SET
+            message_count = message_count + 1,
+            trust_score = ?,
+            timestamp = ?
+        """, (source_agent, target_agent, trust_score, timestamp, trust_score, timestamp))
+
+    def get_network_edges(self):
+        return self.db_service.execute_read("""
+        SELECT * FROM agent_network_edges""")
