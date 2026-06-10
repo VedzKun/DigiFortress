@@ -3,6 +3,7 @@ from src.database.security_db import SecurityDB
 from src.agent.agent_authenticator import AgentAuthenticator
 from src.agent.agent_message import AgentMessage
 from src.agent.agent_registry import AgentRegistry
+from src.security.containment_engine import ContainmentEngine
 
 class AgentCommunication:
     """Handles agent-to-agent communication and validation."""
@@ -11,11 +12,15 @@ class AgentCommunication:
         self.db = security_db or SecurityDB()
         self.registry = AgentRegistry(self.db)
         self.authenticator = AgentAuthenticator()
+        self.containment = ContainmentEngine(self.db)
 
     def send_message(self, sender_id: str, receiver_id: str, message_text: str) -> AgentMessage:
         """
         Creates a securely signed message from a sender to a receiver.
         """
+        if self.containment.should_block_outgoing(sender_id):
+            raise ValueError(f"Agent {sender_id} is contained. Outgoing messages blocked.")
+
         secret_key = self.db.get_agent_secret(sender_id)
         if not secret_key:
             raise ValueError(f"No secret key found for sender: {sender_id}")

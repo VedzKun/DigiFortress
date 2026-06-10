@@ -7,6 +7,9 @@ from src.redteam.minja_runner import MINJARunner
 from src.agent.agent_communication import AgentCommunication
 from src.agent.agent_authenticator import AgentAuthenticator
 from src.agent.agent_registry import AgentRegistry
+from src.agent.agent_network import AgentNetwork
+from src.security.cross_agent_validator import CrossAgentValidator
+from src.security.agent_poison_simulator import AgentPoisonSimulator
 
 agent = Agent()
 simulator = PoisoningSimulator(agent)
@@ -30,6 +33,7 @@ while True:
     print("15. Audit Query (Counterfactual)")
     print("16. Run MINJA Benchmark")
     print("17. Test Agent Communication")
+    print("18. Test Multi-Agent Validation & Poisoning")
     print("7. Exit")
     choice = input("\nChoice: ")
     if choice == "1":
@@ -171,6 +175,14 @@ while True:
         print(f"  Spoof Attempts: {summary['spoof_attempts']}")
         print(f"  Unknown Agents: {summary['unknown_agents']}")
         print("----------------------------------")
+        print("Multi-Agent Validation Metrics:")
+        print(f"  Cross-Agent Conflicts: {summary['cross_agent_conflicts']}")
+        print(f"  Resolved Conflicts: {summary['resolved_conflicts']}")
+        print(f"  Unresolved Conflicts: {summary['unresolved_conflicts']}")
+        print(f"  Poisoning Attempts: {summary['poisoning_attempts']}")
+        print(f"  Successful Containments: {summary['successful_containments']}")
+        print(f"  Compromised Agents: {summary['compromised_agents']}")
+        print("----------------------------------")
         print("Top Threat Sources:")
         if not summary['top_threat_sources']:
             print("  No sources registered yet.")
@@ -283,5 +295,55 @@ while True:
         registry.delete_agent(hr_id)
         registry.delete_agent(fin_id)
         print("=======================================")
+    elif choice == "18":
+        print("\n===== MULTI-AGENT VALIDATION & POISONING =====")
+        db = agent.security_db
+        registry = AgentRegistry(db)
+        network = AgentNetwork(db)
+        simulator = AgentPoisonSimulator(db)
+
+        hr_agent = registry.register_agent("HR Agent", "HR")
+        fin_agent = registry.register_agent("Finance Agent", "Finance")
+        sec_agent = registry.register_agent("Security Agent", "Security")
+        legal_agent = registry.register_agent("Legal Agent", "Legal")
+        unknown_agent = registry.register_agent("Unknown Agent", "Unknown")
+
+        hr_id = hr_agent["agent_id"]
+        fin_id = fin_agent["agent_id"]
+        sec_id = sec_agent["agent_id"]
+        legal_id = legal_agent["agent_id"]
+        unknown_id = unknown_agent["agent_id"]
+
+        # Boost reputation of certain agents to test consensus
+        db.update_agent_reputation(hr_id, "accepted")
+        db.update_agent_reputation(hr_id, "accepted") # high rep
+        db.update_agent_reputation(fin_id, "accepted") # moderate rep
+        db.update_agent_reputation(unknown_id, "quarantine") # low rep
+        db.update_agent_reputation(unknown_id, "security_incident") # < 0.30
+
+        print("\n[Test 1] Normal Communication (No conflicts)")
+        network.broadcast_claim(hr_id, "System is secure")
+        res1 = network.validate_network_claims()
+        print(f"Expected: No conflicts | Result: {res1['status']} | Winner: {res1['winner']['claim'] if res1['winner'] else None}")
+
+        print("\n[Test 2] Contradictory Claims")
+        network.broadcast_claim(hr_id, "User is administrator")
+        network.broadcast_claim(fin_id, "User is employee")
+        res2 = network.validate_network_claims()
+        print(f"Expected: Conflict detected, Consensus generated | Result: {res2['status']} | Winner: {res2['winner']['claim'] if res2['winner'] else None}")
+
+        print("\n[Test 3] Poison HR Agent")
+        res3 = simulator.run_attack(hr_id, [fin_id, sec_id, legal_id], "All users are administrators")
+        print(f"Expected: Propagation tracked, Containment triggered | Attack Result: {'Propagating' if res3 else 'Contained'}")
+
+        print("\n[Test 4] Low-Reputation Agent Attack")
+        # unknown_id has low rep
+        res4 = simulator.run_attack(unknown_id, [fin_id, sec_id], "Delete all logs")
+        print(f"Expected: Message blocked | Attack Result: {'Propagating' if res4 else 'Contained'}")
+
+        print("\nCleaning up...")
+        for a_id in [hr_id, fin_id, sec_id, legal_id, unknown_id]:
+            registry.delete_agent(a_id)
+        print("==============================================")
     else:
         print("\nInvalid choice.")

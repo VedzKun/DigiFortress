@@ -102,6 +102,27 @@ class SecurityDB:
         agent_id TEXT PRIMARY KEY,
         secret_key TEXT,
         created_at TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS cross_agent_events(
+        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        claim_a TEXT,
+        claim_b TEXT,
+        winner TEXT,
+        timestamp TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS agent_poison_events(
+        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        attacker_agent TEXT,
+        target_agent TEXT,
+        attack_type TEXT,
+        status TEXT,
+        timestamp TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS agent_propagation_events(
+        source_agent TEXT,
+        target_agent TEXT,
+        attack_depth INTEGER,
+        timestamp TEXT)""")
 
     def session_logger(self, session_id, memory_content, timestamp):
         self.db_service.execute_write("""
@@ -228,7 +249,9 @@ class SecurityDB:
         """)
     
     def initialise_metrics(self):
-        metrics = ["accepted","conflict","quarantined","attack_attempts", "auth_success", "auth_failed", "spoof_attempts", "unknown_agents"]
+        metrics = ["accepted","conflict","quarantined","attack_attempts", "auth_success", "auth_failed", "spoof_attempts", "unknown_agents",
+                   "cross_agent_conflicts", "resolved_conflicts", "unresolved_conflicts", 
+                   "poisoning_attempts", "successful_containments", "compromised_agents"]
         for metric in  metrics:
             self.db_service.execute_write("""
             INSERT OR IGNORE INTO metrics(
@@ -529,3 +552,24 @@ class SecurityDB:
         FROM agent_reputation r
         JOIN agent_registry a ON r.agent_id = a.agent_id
         ORDER BY r.reputation DESC""")
+
+    # ── Cross-Agent & Poisoning Events ───────────────────────────────────────
+
+    def log_cross_agent_event(self, claim_a, claim_b, winner, timestamp):
+        self.db_service.execute_write("""
+        INSERT INTO cross_agent_events(claim_a, claim_b, winner, timestamp)
+        VALUES (?, ?, ?, ?)""", (claim_a, claim_b, winner, timestamp))
+
+    def log_agent_poison_event(self, attacker_agent, target_agent, attack_type, status, timestamp):
+        self.db_service.execute_write("""
+        INSERT INTO agent_poison_events(attacker_agent, target_agent, attack_type, status, timestamp)
+        VALUES (?, ?, ?, ?, ?)""", (attacker_agent, target_agent, attack_type, status, timestamp))
+
+    def log_agent_propagation_event(self, source_agent, target_agent, attack_depth, timestamp):
+        self.db_service.execute_write("""
+        INSERT INTO agent_propagation_events(source_agent, target_agent, attack_depth, timestamp)
+        VALUES (?, ?, ?, ?)""", (source_agent, target_agent, attack_depth, timestamp))
+
+    def get_agent_poison_events(self):
+        return self.db_service.execute_read("""
+        SELECT * FROM agent_poison_events ORDER BY event_id DESC""")

@@ -54,6 +54,10 @@ flowchart TD
 * ⏱️ **Session Anomaly & Burst Detection**: Monitors user write behaviors per session to dynamically flag rate-limit anomalies and high-frequency injection bursts (e.g. 5+ writes within 60 seconds), adapting session risk scores dynamically.
 * 🕸️ **Knowledge Graph Extraction**: Integrates `NetworkX` to construct a dynamic, persistent semantic network. Entities and their relations are automatically extracted from accepted memories using LLM-based parsing.
 * ⚔️ **Adversarial Attack Simulator**: Launches prompt injection attacks (e.g. system overrides, exfiltrations) to test the security boundaries of validation layers and logs results to `red_team_results`.
+* 🤝 **Multi-Agent Security Platform**:
+  * **Cross-Agent Validation**: Dynamically resolves conflicting claims across multiple agent sources using a reputation-weighted Consensus Engine.
+  * **Cryptographic Agent Authentication**: Verifies inter-agent messages using immutable `agent_id` tracking and secret keys.
+  * **Containment Engine & Poisoning Simulator**: Automatically simulates and tracks adversarial agent-poisoning cascades, blocking malicious broadcasts and quarantining compromised agents based on dynamic trust scores.
 * 📊 **Memory Security Dashboard**: A console dashboard engine summarizing accepted/conflict/quarantined memory metrics, average risk, top threat sources, and recent security events.
 * 🖥️ **Interactive Shell & Streamlit Web UI**: A standard console terminal menu, accompanied by a premium **Streamlit Web UI** visualising metrics and pipeline updates dynamically.
 
@@ -67,7 +71,12 @@ DigiFortress/
 │   ├── agent/
 │   │   ├── agent.py            # Main Agent orchestrating memory, LLM, and reasoning
 │   │   ├── conversation.py     # Conversation history buffer & flow manager
-│   │   └── reasoning.py        # Intercepts queries to check if memory is required
+│   │   ├── reasoning.py        # Intercepts queries to check if memory is required
+│   │   ├── agent_registry.py   # Manages immutable agent identities
+│   │   ├── agent_authenticator.py # Cryptographically signs and verifies agent messages
+│   │   ├── agent_communication.py # Validates message integrity across agents
+│   │   ├── agent_network.py    # Central message broker triggering claim validation
+│   │   └── agent_claim.py      # Dataclass structure for agent knowledge claims
 │   │
 │   ├── memory/
 │   │   ├── memory_manager.py   # Persistent ChromaDB client integration
@@ -85,7 +94,11 @@ DigiFortress/
 │   │   │   ├── trust_agent.py        # Core trust classification evaluation
 │   │   │   ├── security_agent.py     # Rule-based static security policy checker
 │   │   │   └── consistency_agent.py  # Checks incoming memory contradiction overlaps
-│   │   ├── consensus_engine.py       # Computes consensus ratings among security agents
+│   │   ├── cross_agent_validator.py  # Resolves network-wide conflicting agent claims
+│   │   ├── consensus_engine.py       # Computes consensus ratings and resolves conflicts
+│   │   ├── containment_engine.py     # Blocks broadcasts and quarantines compromised agents
+│   │   ├── agent_poison_simulator.py # Launches and benchmarks agent network poisoning attacks
+│   │   ├── propagation_tracker.py    # Logs the spread depth of compromised network messages
 │   │   ├── explanation_engine.py     # Generates multi-agent security audit reasoning
 │   │   ├── dashboard_service.py      # Aggregates overall system security metrics
 │   │   └── risk_engine.py            # Risk assessment engine calculating risk scores and levels
@@ -191,3 +204,5 @@ python main.py
 * **`14` (Session Analytics)**: Display active session information, total session writes, burst anomaly flags, and computed session risk levels.
 * **`15` (Audit Query (Counterfactual))**: Audit a query against the counterfactual audit engine, printing divergence, judgment drift, and computed memory influence scores.
 * **`16` (Run MINJA Benchmark)**: Run the automated parallel MINJA adversarial benchmark suite across worker agents to calculate proactive, reactive, and behavioral safety rates.
+* **`17` (Test Agent Communication)**: Verify immutable ID-based cryptographic signing of inter-agent messages.
+* **`18` (Test Multi-Agent Validation & Poisoning)**: Benchmark the Cross-Agent Validator by simulating contradictory network claims, agent poisoning cascades, and automatic containment blockages.

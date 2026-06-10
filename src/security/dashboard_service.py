@@ -21,6 +21,12 @@ class DashboardService:
         auth_failed = metrics.get("auth_failed", 0)
         spoof_attempts = metrics.get("spoof_attempts", 0)
         unknown_agents = metrics.get("unknown_agents", 0)
+        cross_agent_conflicts = metrics.get("cross_agent_conflicts", 0)
+        resolved_conflicts = metrics.get("resolved_conflicts", 0)
+        unresolved_conflicts = metrics.get("unresolved_conflicts", 0)
+        poisoning_attempts = metrics.get("poisoning_attempts", 0)
+        successful_containments = metrics.get("successful_containments", 0)
+        compromised_agents = metrics.get("compromised_agents", 0)
 
         events = self.db.get_security_events()
         total_risk = sum(event[5] for event in events)
@@ -50,5 +56,11 @@ class DashboardService:
             "auth_success": auth_success,
             "auth_failed": auth_failed,
             "spoof_attempts": spoof_attempts,
-            "unknown_agents": unknown_agents
+            "unknown_agents": unknown_agents,
+            "cross_agent_conflicts": cross_agent_conflicts,
+            "resolved_conflicts": resolved_conflicts,
+            "unresolved_conflicts": unresolved_conflicts,
+            "poisoning_attempts": poisoning_attempts,
+            "successful_containments": successful_containments,
+            "compromised_agents": compromised_agents
         }
