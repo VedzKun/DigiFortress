@@ -17,6 +17,10 @@ class DashboardService:
         conflict = metrics.get("conflict", 0)
         quarantined = metrics.get("quarantined", 0)
         attack_attempts = metrics.get("attack_attempts", 0)
+        auth_success = metrics.get("auth_success", 0)
+        auth_failed = metrics.get("auth_failed", 0)
+        spoof_attempts = metrics.get("spoof_attempts", 0)
+        unknown_agents = metrics.get("unknown_agents", 0)
 
         events = self.db.get_security_events()
         total_risk = sum(event[5] for event in events)
@@ -42,5 +46,9 @@ class DashboardService:
             "avg_risk": round(avg_risk, 2),
             "security_score": round(security_score, 2),
             "top_threat_sources": top_threats,
-            "recent_events": recent_events
+            "recent_events": recent_events,
+            "auth_success": auth_success,
+            "auth_failed": auth_failed,
+            "spoof_attempts": spoof_attempts,
+            "unknown_agents": unknown_agents
         }

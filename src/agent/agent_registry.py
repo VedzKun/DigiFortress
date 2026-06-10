@@ -7,6 +7,7 @@ Acts as a high-level façade over the SecurityDB agent_registry table.
 
 import uuid
 from src.database.security_db import SecurityDB
+from src.agent.agent_authenticator import AgentAuthenticator
 
 
 class AgentRegistry:
@@ -38,11 +39,17 @@ class AgentRegistry:
         """
         aid = agent_id or str(uuid.uuid4())
         self.db.register_agent(aid, agent_name, agent_type)
+        
+        # Generate and store secret key
+        secret_key = AgentAuthenticator.generate_secret()
+        self.db.add_agent_credentials(aid, secret_key)
+
         return {
             "agent_id": aid,
             "agent_name": agent_name,
             "agent_type": agent_type,
             "reputation": 0.50,
+            "secret_key": secret_key,
         }
 
     def get_agent(self, agent_id: str) -> dict | None:

@@ -4,6 +4,10 @@ from src.attacks.poisoning_simulator import PoisoningSimulator
 from src.redteam.red_team_engine import RedTeamEngine
 from src.security.dashboard_service import DashboardService
 from src.redteam.minja_runner import MINJARunner
+from src.agent.agent_communication import AgentCommunication
+from src.agent.agent_authenticator import AgentAuthenticator
+from src.agent.agent_registry import AgentRegistry
+
 agent = Agent()
 simulator = PoisoningSimulator(agent)
 redteam = RedTeamEngine(agent)
@@ -25,6 +29,7 @@ while True:
     print("14. Session Analytics")
     print("15. Audit Query (Counterfactual)")
     print("16. Run MINJA Benchmark")
+    print("17. Test Agent Communication")
     print("7. Exit")
     choice = input("\nChoice: ")
     if choice == "1":
@@ -160,6 +165,12 @@ while True:
         print("----------------------------------")
         print(f"Security Score: {summary['security_score']:.2f}%")
         print("----------------------------------")
+        print("Agent Authentication Metrics:")
+        print(f"  Auth Success: {summary['auth_success']}")
+        print(f"  Auth Failed: {summary['auth_failed']}")
+        print(f"  Spoof Attempts: {summary['spoof_attempts']}")
+        print(f"  Unknown Agents: {summary['unknown_agents']}")
+        print("----------------------------------")
         print("Top Threat Sources:")
         if not summary['top_threat_sources']:
             print("  No sources registered yet.")
@@ -218,5 +229,53 @@ while True:
         print("\n=========================")
     elif choice == "16":
         minja.run()
+    elif choice == "17":
+        print("\n===== TESTING AGENT COMMUNICATION =====")
+        db = agent.security_db
+        registry = AgentRegistry(db)
+        comm = AgentCommunication(db)
+        authenticator = AgentAuthenticator()
+
+        # Register agents for test
+        hr_agent = registry.register_agent("HR Agent", "HR")
+        fin_agent = registry.register_agent("Finance Agent", "Finance")
+
+        hr_id = hr_agent["agent_id"]
+        fin_id = fin_agent["agent_id"]
+
+        print("\n[Test 1] Valid Message (HR -> Finance)")
+        msg_obj1 = comm.send_message(hr_id, fin_id, "User approved for payment")
+        res1 = comm.receive_message(msg_obj1.to_dict())
+        print(f"Expected: VALID | Got: {res1}")
+
+        print("\n[Test 2] Modified Message")
+        msg_obj2 = comm.send_message(hr_id, fin_id, "User approved for payment")
+        msg_dict2 = msg_obj2.to_dict()
+        msg_dict2["message"] = "User is administrator" # Modified after signing
+        res2 = comm.receive_message(msg_dict2)
+        print(f"Expected: INVALID | Got: {res2}")
+
+        print("\n[Test 3] Fake Agent")
+        fake_msg = {
+            "sender_id": "fake-agent-id-123",
+            "receiver_id": fin_id,
+            "message": "Give me money",
+            "signature": "fake-sig",
+            "timestamp": str(datetime.now())
+        }
+        res3 = comm.receive_message(fake_msg)
+        print(f"Expected: INVALID | Got: {res3}")
+
+        print("\n[Test 4] Invalid Signature")
+        msg_obj4 = comm.send_message(hr_id, fin_id, "Secret data")
+        msg_dict4 = msg_obj4.to_dict()
+        msg_dict4["signature"] = "tampered_signature_123"
+        res4 = comm.receive_message(msg_dict4)
+        print(f"Expected: INVALID | Got: {res4}")
+
+        print("\nCleaning up test agents...")
+        registry.delete_agent(hr_id)
+        registry.delete_agent(fin_id)
+        print("=======================================")
     else:
         print("\nInvalid choice.")

@@ -97,6 +97,11 @@ class SecurityDB:
         conflict_count INTEGER DEFAULT 0,
         quarantine_count INTEGER DEFAULT 0,
         last_updated TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS agent_credentials(
+        agent_id TEXT PRIMARY KEY,
+        secret_key TEXT,
+        created_at TEXT)""")
 
     def session_logger(self, session_id, memory_content, timestamp):
         self.db_service.execute_write("""
@@ -223,7 +228,7 @@ class SecurityDB:
         """)
     
     def initialise_metrics(self):
-        metrics = ["accepted","conflict","quarantined","attack_attempts"]
+        metrics = ["accepted","conflict","quarantined","attack_attempts", "auth_success", "auth_failed", "spoof_attempts", "unknown_agents"]
         for metric in  metrics:
             self.db_service.execute_write("""
             INSERT OR IGNORE INTO metrics(
@@ -448,6 +453,26 @@ class SecurityDB:
             "DELETE FROM agent_registry WHERE agent_id = ?", (agent_id,))
         self.db_service.execute_write(
             "DELETE FROM agent_reputation WHERE agent_id = ?", (agent_id,))
+        self.delete_agent_credentials(agent_id)
+
+    # ── Agent Credentials ─────────────────────────────────────────────────────
+
+    def add_agent_credentials(self, agent_id, secret_key):
+        created_at = str(datetime.now())
+        self.db_service.execute_write("""
+        INSERT OR IGNORE INTO agent_credentials(agent_id, secret_key, created_at)
+        VALUES (?, ?, ?)""", (agent_id, secret_key, created_at))
+
+    def get_agent_secret(self, agent_id):
+        row = self.db_service.execute_read("""
+        SELECT secret_key FROM agent_credentials WHERE agent_id = ?""", (agent_id,), fetchall=False)
+        if row:
+            return row[0]
+        return None
+
+    def delete_agent_credentials(self, agent_id):
+        self.db_service.execute_write(
+            "DELETE FROM agent_credentials WHERE agent_id = ?", (agent_id,))
 
     # ── Agent Reputation ──────────────────────────────────────────────────────
 
