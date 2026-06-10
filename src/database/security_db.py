@@ -82,6 +82,21 @@ class SecurityDB:
         divergence REAL,
         judgment_divergence INTEGER,
         timestamp TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS agent_registry(
+        agent_id TEXT PRIMARY KEY,
+        agent_name TEXT,
+        agent_type TEXT,
+        reputation REAL DEFAULT 0.5,
+        created_at TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS agent_reputation(
+        agent_id TEXT PRIMARY KEY,
+        reputation REAL DEFAULT 0.5,
+        accepted_count INTEGER DEFAULT 0,
+        conflict_count INTEGER DEFAULT 0,
+        quarantine_count INTEGER DEFAULT 0,
+        last_updated TEXT)""")
 
     def session_logger(self, session_id, memory_content, timestamp):
         self.db_service.execute_write("""
@@ -391,3 +406,101 @@ class SecurityDB:
         query, normal_response, normal_judgment, counterfactual_response, counterfactual_judgment, divergence, judgment_divergence, timestamp)
         VALUES (?,?,?,?,?,?,?,?)
         """, (query, normal_response, normal_judgment, counterfactual_response, counterfactual_judgment, divergence, int(judgment_divergence), timestamp))
+
+    # ── Agent Registry ────────────────────────────────────────────────────────
+
+    def register_agent(self, agent_id, agent_name, agent_type):
+        """Insert a new agent with default reputation 0.50."""
+        created_at = str(datetime.now())
+        self.db_service.execute_write("""
+        INSERT OR IGNORE INTO agent_registry(agent_id, agent_name, agent_type, reputation, created_at)
+        VALUES (?, ?, ?, ?, ?)""", (agent_id, agent_name, agent_type, 0.5, created_at))
+        self.db_service.execute_write("""
+        INSERT OR IGNORE INTO agent_reputation(agent_id, reputation, last_updated)
+        VALUES (?, ?, ?)""", (agent_id, 0.5, created_at))
+
+    def get_agent(self, agent_id):
+        """Return a single agent row by ID."""
+        return self.db_service.execute_read("""
+        SELECT agent_id, agent_name, agent_type, reputation, created_at
+        FROM agent_registry WHERE agent_id = ?""", (agent_id,), fetchall=False)
+
+    def get_all_agents(self):
+        """Return all registered agents ordered by reputation descending."""
+        return self.db_service.execute_read("""
+        SELECT agent_id, agent_name, agent_type, reputation, created_at
+        FROM agent_registry ORDER BY reputation DESC""")
+
+    def update_agent(self, agent_id, agent_name=None, agent_type=None):
+        """Update mutable fields on an agent record."""
+        if agent_name is not None:
+            self.db_service.execute_write("""
+            UPDATE agent_registry SET agent_name = ? WHERE agent_id = ?""",
+            (agent_name, agent_id))
+        if agent_type is not None:
+            self.db_service.execute_write("""
+            UPDATE agent_registry SET agent_type = ? WHERE agent_id = ?""",
+            (agent_type, agent_id))
+
+    def delete_agent(self, agent_id):
+        """Remove an agent and its reputation record."""
+        self.db_service.execute_write(
+            "DELETE FROM agent_registry WHERE agent_id = ?", (agent_id,))
+        self.db_service.execute_write(
+            "DELETE FROM agent_reputation WHERE agent_id = ?", (agent_id,))
+
+    # ── Agent Reputation ──────────────────────────────────────────────────────
+
+    def get_agent_reputation(self, agent_id):
+        """Return (reputation, accepted, conflict, quarantine, last_updated) or None."""
+        return self.db_service.execute_read("""
+        SELECT reputation, accepted_count, conflict_count, quarantine_count, last_updated
+        FROM agent_reputation WHERE agent_id = ?""", (agent_id,), fetchall=False)
+
+    def update_agent_reputation(self, agent_id, event_type):
+        """
+        Apply a reputation delta based on event_type:
+          accepted          → +0.05
+          conflict          → -0.10
+          quarantine        → -0.15
+          security_incident → -0.25
+        Clamped to [0.00, 1.00]. Syncs reputation to agent_registry as well.
+        """
+        DELTAS = {
+            "accepted":           +0.05,
+            "conflict":           -0.10,
+            "quarantine":         -0.15,
+            "security_incident":  -0.25,
+        }
+        row = self.get_agent_reputation(agent_id)
+        if row is None:
+            return
+        reputation, accepted, conflict, quarantine, _ = row
+        delta = DELTAS.get(event_type, 0.0)
+        reputation = max(0.0, min(1.0, reputation + delta))
+        last_updated = str(datetime.now())
+        if event_type == "accepted":
+            accepted += 1
+        elif event_type == "conflict":
+            conflict += 1
+        elif event_type in ("quarantine", "security_incident"):
+            quarantine += 1
+        self.db_service.execute_write("""
+        UPDATE agent_reputation
+        SET reputation = ?, accepted_count = ?, conflict_count = ?,
+            quarantine_count = ?, last_updated = ?
+        WHERE agent_id = ?""",
+        (reputation, accepted, conflict, quarantine, last_updated, agent_id))
+        self.db_service.execute_write("""
+        UPDATE agent_registry SET reputation = ? WHERE agent_id = ?""",
+        (reputation, agent_id))
+
+    def get_all_agent_reputations(self):
+        """Return all agent reputation rows joined with agent names."""
+        return self.db_service.execute_read("""
+        SELECT r.agent_id, a.agent_name, a.agent_type,
+               r.reputation, r.accepted_count, r.conflict_count,
+               r.quarantine_count, r.last_updated
+        FROM agent_reputation r
+        JOIN agent_registry a ON r.agent_id = a.agent_id
+        ORDER BY r.reputation DESC""")
