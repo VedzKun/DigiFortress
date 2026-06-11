@@ -47,13 +47,24 @@ class Agent:
         retrieved_mems = self.memory.retrieve_memory(self.embedder.generate_embedding(query))["documents"][0]
         normal_response = self.llm.generate_response(query=query, retrieved_memories=retrieved_mems, conversation_history=conversation_history)
         normal_judgment = self.judgement_analyser.classify(normal_response)
-        counterfactual_response = self.llm.generate_response(query=query, retrieved_memories=[], conversation_history=conversation_history)
-        counterfactual_judgment = self.judgement_analyser.classify(counterfactual_response)
-        divergence = self.counterfactual_auditor.calculate_divergence(normal_response, counterfactual_response)
+        
+        if not retrieved_mems:
+            counterfactual_response = normal_response
+            counterfactual_judgment = normal_judgment
+            divergence = 0.0
+            judgment_divergence = False
+        else:
+            counterfactual_response = self.llm.generate_response(query=query, retrieved_memories=[], conversation_history=conversation_history)
+            if counterfactual_response == normal_response:
+                counterfactual_judgment = normal_judgment
+            else:
+                counterfactual_judgment = self.judgement_analyser.classify(counterfactual_response)
+            divergence = self.counterfactual_auditor.calculate_divergence(normal_response, counterfactual_response)
+            judgment_divergence = (normal_judgment != counterfactual_judgment)
+
         session_id = self.session_manager.get_session_id()
         writes = self.security_db.get_session_write_count(session_id)
         session_risk = self.session_risk_engine.calculate_risk(writes)
-        judgment_divergence = (normal_judgment != counterfactual_judgment)
         influence_score = self.influence_engine.calculate(divergence, judgment_divergence, session_risk)
         if influence_score < 0.35 and divergence > 0.10 and retrieved_mems:
             audit_verdict = self.llm_auditor.audit(query, retrieved_mems, normal_response, counterfactual_response)
@@ -94,12 +105,12 @@ class Agent:
         print(f"Trust Score: {trust_score}")
         print(f"Status: {status}")
         
-        category = self.classifier.classify(text)
         timestamp = str(datetime.now())
         session_id = self.session_manager.get_session_id()
         self.security_db.session_logger(session_id, text, timestamp)
         
         if status == "accepted":
+            category = self.classifier.classify(text)
             relation = analysis.get("relation", "")
             if relation and "," in relation:
                 parts = relation.split(",", 1)

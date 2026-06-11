@@ -116,20 +116,29 @@ class ParallelAgent:
         )
         normal_judgment = self.judgement_analyser.classify(normal_response)
 
-        counterfactual_response = self.llm.generate_response(
-            query=query,
-            retrieved_memories=[],
-            conversation_history=conversation_history,
-        )
-        counterfactual_judgment = self.judgement_analyser.classify(counterfactual_response)
+        if not retrieved_mems:
+            counterfactual_response = normal_response
+            counterfactual_judgment = normal_judgment
+            divergence = 0.0
+            judgment_divergence = False
+        else:
+            counterfactual_response = self.llm.generate_response(
+                query=query,
+                retrieved_memories=[],
+                conversation_history=conversation_history,
+            )
+            if counterfactual_response == normal_response:
+                counterfactual_judgment = normal_judgment
+            else:
+                counterfactual_judgment = self.judgement_analyser.classify(counterfactual_response)
+            divergence = self.counterfactual_auditor.calculate_divergence(
+                normal_response, counterfactual_response
+            )
+            judgment_divergence = normal_judgment != counterfactual_judgment
 
-        divergence = self.counterfactual_auditor.calculate_divergence(
-            normal_response, counterfactual_response
-        )
         session_id = self.session_manager.get_session_id()
         writes = self.security_db.get_session_write_count(session_id)
         session_risk = self.session_risk_engine.calculate_risk(writes)
-        judgment_divergence = normal_judgment != counterfactual_judgment
         influence_score = self.influence_engine.calculate(
             divergence, judgment_divergence, session_risk
         )

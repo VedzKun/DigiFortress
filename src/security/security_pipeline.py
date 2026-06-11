@@ -58,44 +58,75 @@ class SecurityPipeline:
             return ""
 
     def analyze(self, memory, related_memories, source):
-        # 1. Run all sub-components in parallel
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            f_trust_agent = executor.submit(self._run_trust_agent, memory)
-            f_sec_agent = executor.submit(self._run_security_agent, memory)
-            f_cons_agent = executor.submit(self._run_consistency_agent, memory, related_memories)
-            f_rule = executor.submit(self._run_rule_trust, memory, source)
-            f_llm_trust = executor.submit(self._run_llm_trust, memory)
-            
-            f_conflict = executor.submit(self._run_conflict_analysis, memory, related_memories)
-            f_version = executor.submit(self._run_version_group, memory)
-            f_relation = executor.submit(self._run_relation_extraction, memory)
-            
-            trust_agent_score = f_trust_agent.result()
-            security_agent_score = f_sec_agent.result()
-            consistency_agent_score = f_cons_agent.result()
-            rule_score = f_rule.result()
-            llm_score = f_llm_trust.result()
-            
-            conflict = f_conflict.result()
-            memory_group = f_version.result()
-            relation = f_relation.result()
-
-        # 2. Aggregate Results
+        # 1. Run rule-based Security Agent evaluation first (highly efficient, zero LLM calls)
+        security_agent_score = self._run_security_agent(memory)
         source_rep = self.security_db.get_source_reputation(source)
-        multi_agent_score = self.consensus.calculate(trust_agent_score, security_agent_score, consistency_agent_score)
-        trust_score = (multi_agent_score * 0.8 + source_rep * 0.2)
         
-        status = "accepted"
-        if trust_score < 0.4 or security_agent_score == 0.0 or trust_agent_score < 0.4:
+        # Initialize variables
+        trust_agent_score = 1.0
+        consistency_agent_score = 1.0
+        llm_score = 1.0
+        conflict = False
+        memory_group = "unknown"
+        relation = ""
+        
+        if security_agent_score == 0.0:
+            # Dangerous content immediately quarantined, bypass all LLM evaluations
+            trust_agent_score = 0.0
+            llm_score = 0.0
+            consistency_agent_score = 1.0
+            conflict = False
             status = "quarantined"
+            multi_agent_score = self.consensus.calculate(trust_agent_score, security_agent_score, consistency_agent_score)
+            trust_score = (multi_agent_score * 0.8 + source_rep * 0.2)
+        else:
+            # Evaluate LLM Trust Scorer (First LLM call)
+            trust_agent_score = self._run_trust_agent(memory)
+            llm_score = trust_agent_score # Reuse identical score, eliminating duplicate LLM call
+            
+            # Check if quarantine is guaranteed (either trust_agent_score < 0.4 or max possible trust_score < 0.4)
+            # max possible trust_score is when consistency_agent_score = 1.0
+            multi_agent_score_max = (trust_agent_score + security_agent_score + 1.0) / 3
+            trust_score_max = (multi_agent_score_max * 0.8 + source_rep * 0.2)
+            
+            if trust_agent_score < 0.4 or trust_score_max < 0.4:
+                status = "quarantined"
+                consistency_agent_score = 1.0
+                conflict = False
+                multi_agent_score = self.consensus.calculate(trust_agent_score, security_agent_score, consistency_agent_score)
+                trust_score = (multi_agent_score * 0.8 + source_rep * 0.2)
+            else:
+                # Perform conflict analysis sequentially, breaking early on the first conflict
+                conflict = False
+                for existing in related_memories:
+                    if self.llm_conflict.detect(memory, existing):
+                        conflict = True
+                        break
+                
+                consistency_agent_score = 0.0 if conflict else 1.0
+                multi_agent_score = self.consensus.calculate(trust_agent_score, security_agent_score, consistency_agent_score)
+                trust_score = (multi_agent_score * 0.8 + source_rep * 0.2)
+                
+                if trust_score < 0.4:
+                    status = "quarantined"
+                elif conflict:
+                    status = "conflict"
+                else:
+                    status = "accepted"
+
+        # Update metrics based on status
+        if status == "quarantined":
             self.security_db.increment_metric("quarantined")
-        elif conflict:
-            status = "conflict"
+        elif status == "conflict":
             self.security_db.increment_metric("conflict")
         else:
-            status = "accepted"
             self.security_db.increment_metric("accepted")
-            
+
+        # Lazy evaluate memory group and relation extraction ONLY when status is "accepted"
+        if status == "accepted":
+            memory_group = self._run_version_group(memory)
+            relation = self._run_relation_extraction(memory)
+
         self.security_db.update_source_reputation(source, status)
         risk_score = self.risk_engine.calculate_risk(trust_score, source_rep, status)
         risk_level = self.risk_engine.get_risk_level(risk_score)
@@ -147,3 +178,4 @@ class SecurityPipeline:
             "consensus": multi_agent_score,
             "conflict": conflict
         }
+
