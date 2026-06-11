@@ -202,7 +202,7 @@ st.sidebar.markdown("---")
 # Navigation Selector
 page = st.sidebar.radio(
     "Navigation Menu",
-    ["Security Dashboard", "Core Memory Manager", "Remember (New Memory)", "Ask Agent (Chat)", "Attack Simulator", "Session Analytics"]
+    ["Security Dashboard", "Core Memory Manager", "Remember (New Memory)", "Ask Agent (Chat)", "Query Auditor (Counterfactual)", "Attack Simulator", "Session Analytics"]
 )
 
 st.sidebar.markdown("---")
@@ -508,11 +508,11 @@ elif page == "Remember (New Memory)":
             
             # Final Decision Box
             if status == "accepted":
-                relation = agent.extractor.extract(new_mem).lower().strip()
-                if "," in relation:
-                    source_node, target_node = relation.split(",")
+                relation = validation.get("relation", "").lower().strip()
+                if relation and "," in relation:
+                    source_node, target_node = relation.split(",", 1)
                     agent.graph.add_relation(source_node.strip(), target_node.strip())
-                memory_group = agent.version_manager.get_memory_group(new_mem).lower().strip()
+                memory_group = validation.get("memory_group", "unknown").lower().strip()
                 agent.security_db.add_memory_version(memory_group, new_mem, str(datetime.now()), source_opt, trust_score)
                 
                 # Actually save
@@ -554,6 +554,9 @@ elif page == "Remember (New Memory)":
                 # Quarantine
                 agent.quarantine.quarantine_memory(content=new_mem, reason=reasons)
                 st.error(f"**Quarantined**: Low trust score or security violation detected! Reasons: {reasons}")
+            elif status == "policy_violation":
+                violation_reason = validation.get("policy_violation", "Unknown violation")
+                st.error(f"**Policy Violation Block**: Enterprise rule triggered! Reason: {violation_reason}")
         elif remember_clicked:
             st.error("Memory text cannot be empty!")
 
@@ -773,3 +776,70 @@ elif page == "Session Analytics":
             
     st.markdown("</div>", unsafe_allow_html=True)
 
+# ================= PAGE 7: QUERY AUDITOR (COUNTERFACTUAL) =================
+elif page == "Query Auditor (Counterfactual)":
+    st.markdown("<h1 class='main-header'>Query Auditor</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='sub-header'>Test how the agent's internal memory affects its output by running a counterfactual divergence audit.</p>", unsafe_allow_html=True)
+    
+    col_input, col_audit = st.columns([1, 1])
+    
+    with col_input:
+        st.markdown("<div style='background: rgba(22, 27, 34, 0.7); border: 1px solid #30363d; border-radius: 12px; padding: 25px;'>", unsafe_allow_html=True)
+        st.subheader("Auditor Input")
+        audit_query = st.text_input("Enter a query to audit:", placeholder="e.g. When does the server backup?")
+        
+        audit_clicked = st.button("Run Counterfactual Audit")
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+    if audit_clicked and audit_query.strip():
+        with st.spinner("Running deep counterfactual audit..."):
+            audit_result = agent.audit_query(audit_query)
+            
+            divergence = audit_result["divergence"]
+            influence_score = audit_result["influence_score"]
+            influence_level = audit_result["influence_level"]
+            retrieved_mems = audit_result["retrieved_memories"]
+            
+            st.markdown("### Audit Report")
+            
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.metric("Divergence Score", f"{divergence:.2f}")
+            with c2:
+                inf_color = '#f44336' if influence_level in ["HIGH", "CRITICAL"] else '#ff9800' if influence_level == "MEDIUM" else '#4caf50'
+                st.markdown(f"""
+                <div class="metric-card" style="border-color: {inf_color}; padding: 10px;">
+                    <span style="color: {inf_color}; font-weight: 600;">Influence Level</span>
+                    <div class="metric-value" style="color: {inf_color}; font-size: 1.5rem;">{influence_level}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with c3:
+                st.metric("Influence Score", f"{influence_score:.2f}")
+                
+            st.markdown("#### Retrieved Contextual Memories")
+            if retrieved_mems:
+                for mem in retrieved_mems:
+                    st.markdown(f"- *\"{mem}\"*")
+            else:
+                st.info("No memories retrieved for this query.")
+                
+            col_norm, col_count = st.columns(2)
+            with col_norm:
+                st.markdown(f"""
+                <div style="background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 8px; padding: 15px; height: 100%;">
+                    <p style="margin: 0 0 5px 0; color: #58a6ff; font-weight: 700;">NORMAL RESPONSE (WITH MEMORY):</p>
+                    <p style="margin: 0; font-size: 1.05rem;">{audit_result['normal_response']}</p>
+                    <hr style="border-color: rgba(88, 166, 255, 0.2);">
+                    <p style="margin: 0; font-size: 0.85rem; color: #8b949e;">Judgment Class: <b>{audit_result['normal_judgment']}</b></p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with col_count:
+                st.markdown(f"""
+                <div style="background: rgba(244, 67, 54, 0.1); border: 1px solid rgba(244, 67, 54, 0.3); border-radius: 8px; padding: 15px; height: 100%;">
+                    <p style="margin: 0 0 5px 0; color: #f44336; font-weight: 700;">COUNTERFACTUAL RESPONSE (NO MEMORY):</p>
+                    <p style="margin: 0; font-size: 1.05rem;">{audit_result['counterfactual_response']}</p>
+                    <hr style="border-color: rgba(244, 67, 54, 0.2);">
+                    <p style="margin: 0; font-size: 0.85rem; color: #8b949e;">Judgment Class: <b>{audit_result['counterfactual_judgment']}</b></p>
+                </div>
+                """, unsafe_allow_html=True)

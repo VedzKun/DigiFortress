@@ -8,43 +8,34 @@ class ReasoningLayer:
 
     def requires_memory(self, query):
         prompt = f"""
-Determine whether answering this query
-requires retrieving stored memories.
+Determine whether answering this query requires retrieving stored context, facts, rules, schedules, episodic memories, or operational details.
 
-Return only:
+If the query asks about specific entities, servers, schedules, users, previous events, preferences, or rules that are not general world knowledge, return YES.
+If the query asks for general knowledge (e.g., explaining a concept, writing a generic script, basic math), return NO.
 
-YES
-or
-NO
+Return only YES or NO.
 
 Examples:
 
-Query:
-What do I prefer?
+Query: What is my favorite language?
 YES
 
-Query:
-What is my favorite language?
-YES
-
-Query:
-What is Python?
+Query: What is Python?
 NO
 
-Query:
-Should I trust new memories?
+Query: When does the server backup?
 YES
 
-Query:
-Who am I?
+Query: Who am I?
 YES
 
-Query:
-Explain Flask.
+Query: Explain Flask.
 NO
 
-Query:
-{query}
+Query: What is the IP address of the database?
+YES
+
+Query: {query}
 """
         try:
             response = ollama.chat(
