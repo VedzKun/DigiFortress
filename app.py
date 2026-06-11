@@ -16,77 +16,171 @@ st.set_page_config(
 # Custom CSS for modern premium glassmorphism dark mode
 st.markdown("""
 <style>
-    /* Dark Theme Core overrides */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;600;800&display=swap');
+
+    /* Core typography and background */
     .stApp {
-        background-color: #0d1117;
+        background: radial-gradient(circle at top right, #111827, #0d1117 40%, #05070a);
         color: #c9d1d9;
+        font-family: 'Inter', sans-serif;
     }
     
     /* Sidebar styling */
     section[data-testid="stSidebar"] {
-        background-color: #161b22 !important;
-        border-right: 1px solid #30363d;
+        background: rgba(13, 17, 23, 0.85) !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-right: 1px solid rgba(48, 54, 61, 0.5);
     }
     
     /* Modern Glassmorphic Cards */
     .metric-card {
-        background: rgba(22, 27, 34, 0.7);
-        border: 1px solid #30363d;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        transition: all 0.3s ease;
+        background: rgba(22, 27, 34, 0.4);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(88, 166, 255, 0.1);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         text-align: center;
+        position: relative;
+        overflow: hidden;
     }
+    
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(88, 166, 255, 0.5), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.6s ease;
+    }
+
     .metric-card:hover {
-        transform: translateY(-2px);
-        border-color: #58a6ff;
-        box-shadow: 0 6px 20px rgba(88, 166, 255, 0.15);
+        transform: translateY(-5px) scale(1.02);
+        border-color: rgba(88, 166, 255, 0.4);
+        box-shadow: 0 12px 40px rgba(88, 166, 255, 0.15);
     }
+    
+    .metric-card:hover::before {
+        transform: translateX(100%);
+    }
+
     .metric-value {
-        font-size: 2rem;
+        font-family: 'Outfit', sans-serif;
+        font-size: 2.5rem;
         font-weight: 800;
-        margin-top: 5px;
+        margin-top: 10px;
+        background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 2px 10px rgba(165, 180, 252, 0.2);
     }
     
     /* Header decoration */
     .main-header {
-        font-family: 'Outfit', 'Inter', sans-serif;
-        background: linear-gradient(90deg, #58a6ff, #50e3c2);
+        font-family: 'Outfit', sans-serif;
+        background: linear-gradient(135deg, #58a6ff 0%, #a371f7 50%, #50e3c2 100%);
+        background-size: 200% auto;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 800;
-        font-size: 2.5rem;
-        margin-bottom: 5px;
+        font-size: 3.2rem;
+        margin-bottom: 10px;
+        animation: shine 4s linear infinite;
     }
+    
+    @keyframes shine {
+        to {
+            background-position: 200% center;
+        }
+    }
+
     .sub-header {
         color: #8b949e;
-        font-size: 1.1rem;
-        margin-bottom: 25px;
+        font-size: 1.15rem;
+        margin-bottom: 30px;
+        font-weight: 300;
+        letter-spacing: 0.5px;
     }
     
     /* Dynamic colored badges for memories */
     .status-badge {
         display: inline-block;
-        padding: 3px 10px;
-        border-radius: 12px;
+        padding: 4px 12px;
+        border-radius: 20px;
         font-size: 0.85rem;
         font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        backdrop-filter: blur(4px);
     }
     .badge-accepted {
         background-color: rgba(56, 142, 60, 0.15);
         color: #4caf50;
         border: 1px solid rgba(56, 142, 60, 0.3);
+        box-shadow: 0 0 10px rgba(56, 142, 60, 0.1);
     }
     .badge-conflict {
         background-color: rgba(245, 124, 0, 0.15);
         color: #ff9800;
         border: 1px solid rgba(245, 124, 0, 0.3);
+        box-shadow: 0 0 10px rgba(245, 124, 0, 0.1);
     }
     .badge-quarantined {
         background-color: rgba(211, 47, 47, 0.15);
         color: #f44336;
         border: 1px solid rgba(211, 47, 47, 0.3);
+        box-shadow: 0 0 10px rgba(211, 47, 47, 0.1);
+    }
+    
+    /* Input fields and buttons */
+    .stTextInput > div > div > input, .stTextArea > div > div > textarea {
+        background-color: rgba(13, 17, 23, 0.6) !important;
+        border: 1px solid rgba(88, 166, 255, 0.2) !important;
+        border-radius: 8px !important;
+        color: #c9d1d9 !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stTextInput > div > div > input:focus, .stTextArea > div > div > textarea:focus {
+        border-color: #58a6ff !important;
+        box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2) !important;
+    }
+    
+    .stButton > button {
+        background: linear-gradient(135deg, #238636 0%, #2ea043 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 1rem !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(35, 134, 54, 0.2) !important;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(35, 134, 54, 0.4) !important;
+    }
+    
+    /* Threat Level Animation */
+    @keyframes pulse-critical {
+        0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(244, 67, 54, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+    }
+    
+    .threat-critical {
+        animation: pulse-critical 2s infinite;
+    }
+    
+    /* Tables */
+    .stDataFrame {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(48, 54, 61, 0.5);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -255,8 +349,9 @@ if page == "Security Dashboard":
             bg_color = "rgba(244, 67, 54, 0.1)"
             border_color = "#f44336"
             
+        threat_class = "threat-critical" if "CRITICAL" in level else ""
         st.markdown(f"""
-        <div style="background: {bg_color}; border: 1px solid {border_color}; border-radius: 8px; padding: 15px; margin-top: 30px; text-align: center;">
+        <div class="{threat_class}" style="background: {bg_color}; border: 1px solid {border_color}; border-radius: 8px; padding: 15px; margin-top: 30px; text-align: center;">
             <h2 style="margin: 0; color: {border_color}; font-size: 1.5rem; font-weight: 800;">{level}</h2>
         </div>
         <p style="color: #8b949e; font-size: 0.95rem; text-align: center; margin-top: 25px; line-height: 1.4;">{desc}</p>
