@@ -476,7 +476,7 @@ elif page == "Remember (New Memory)":
             step3 = st.empty()
             step3.info("Step 3: Assessing Trust & running Contradiction Checks...")
             time.sleep(0.6)
-            validation = agent.validator.validate(memory=new_mem, related_memories=related_docs, source=source_opt)
+            validation = agent.security_pipeline.analyze(memory=new_mem, related_memories=related_docs, source=source_opt)
             trust_score = validation["trust_score"]
             status = validation["status"]
             reasons = validation["reasons"]
@@ -686,7 +686,7 @@ elif page == "Attack Simulator":
                 related_memories = agent.memory.retrieve_memory(embedding, n_results=5)
                 related_docs = related_memories["documents"][0] if related_memories["documents"] else []
                 
-                validation = agent.validator.validate(memory=attack, related_memories=related_docs, source="unknown")
+                validation = agent.security_pipeline.analyze(memory=attack, related_memories=related_docs, source="unknown")
                 trust_score = validation["trust_score"]
                 status = validation["status"]
                 
