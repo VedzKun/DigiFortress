@@ -5,6 +5,7 @@ from src.agent.agent_message import AgentMessage
 from src.agent.agent_registry import AgentRegistry
 from src.security.containment_engine import ContainmentEngine
 from src.graph.agent_network_graph import AgentNetworkGraph
+from src.governance.policy_engine import PolicyEngine
 
 class AgentCommunication:
     """Handles agent-to-agent communication and validation."""
@@ -15,11 +16,17 @@ class AgentCommunication:
         self.authenticator = AgentAuthenticator()
         self.containment = ContainmentEngine(self.db)
         self.network_graph = AgentNetworkGraph(self.db)
+        self.policy_engine = PolicyEngine(security_db=self.db)
 
     def send_message(self, sender_id: str, receiver_id: str, message_text: str) -> AgentMessage:
         """
         Creates a securely signed message from a sender to a receiver.
         """
+        # Check against enterprise policies
+        policy_eval = self.policy_engine.evaluate_message(message_text)
+        if policy_eval.is_violation and policy_eval.action_taken == "block":
+            raise ValueError(f"Message blocked by policy: {policy_eval.reason}")
+
         if self.containment.should_block_outgoing(sender_id):
             raise ValueError(f"Agent {sender_id} is contained. Outgoing messages blocked.")
 

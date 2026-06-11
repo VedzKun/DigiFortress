@@ -2,6 +2,7 @@ from src.database.security_db import SecurityDB
 from src.agent.agent_communication import AgentCommunication
 from src.security.cross_agent_validator import CrossAgentValidator
 from src.agent.agent_claim import AgentClaim
+from src.governance.policy_engine import PolicyEngine
 
 class AgentNetwork:
     """Central message broker for agents, validating claims across the network."""
@@ -9,6 +10,7 @@ class AgentNetwork:
         self.db = security_db or SecurityDB()
         self.comm = AgentCommunication(self.db)
         self.validator = CrossAgentValidator(self.db)
+        self.policy_engine = PolicyEngine(security_db=self.db)
         
         # Temporary storage for broadcast claims to perform validation
         self.active_claims = []
@@ -18,6 +20,12 @@ class AgentNetwork:
         An agent broadcasts a claim to the network.
         We securely package it and add it to active claims.
         """
+        # Check policy before broadcast
+        policy_eval = self.policy_engine.evaluate_message(claim_text)
+        if policy_eval.is_violation and policy_eval.action_taken == "block":
+            print(f"Broadcast blocked by policy: {policy_eval.reason}")
+            return False
+
         # We use a dummy 'NETWORK' receiver just for packaging, or just sign the claim
         # Actually, let's use AgentCommunication to simulate sending to 'NETWORK'
         try:

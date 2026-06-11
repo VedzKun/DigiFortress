@@ -18,6 +18,7 @@ from src.security.counterfactual_auditor import CounterfactualAuditor
 from src.security.judgement_analyser import JudgmentAnalyzer
 from src.security.influence_engine import InfluenceEngine
 from src.security.llm_auditor import LLMAuditor
+from src.governance.policy_engine import PolicyEngine
 
 class Agent:
     def __init__(self, model="qwen2.5:3b"):
@@ -41,6 +42,7 @@ class Agent:
         self.judgement_analyser = JudgmentAnalyzer(model=model)
         self.influence_engine = InfluenceEngine()
         self.llm_auditor = LLMAuditor(model=model)
+        self.policy_engine = PolicyEngine(model=model, security_db=self.security_db)
         
     def audit_query(self, query):
         conversation_history = self.conversation.get_history()
@@ -110,6 +112,23 @@ class Agent:
         self.security_db.session_logger(session_id, text, timestamp)
         
         if status == "accepted":
+            print("[STEP 3.5] Running Enterprise Policy Engine...")
+            policy_eval = self.policy_engine.evaluate_memory(text)
+            if policy_eval.is_violation:
+                print(f"\nPolicy Violation Detected! Action: {policy_eval.action_taken}")
+                status = "policy_violation"
+                analysis["policy_violation"] = policy_eval.reason
+                memory_id = str(uuid.uuid4())
+                self.security_db.add_memory(
+                    memory_id=memory_id,
+                    content=text,
+                    trust_score=trust_score,
+                    status=status,
+                    source=source,
+                    timestamp=timestamp
+                )
+                return {"memory_id": memory_id, "status": status, "validation": analysis}
+
             category = self.classifier.classify(text)
             relation = analysis.get("relation", "")
             if relation and "," in relation:
@@ -181,6 +200,14 @@ class Agent:
         self.security_db.session_logger(session_id, text, timestamp)
         
         if status == "accepted":
+            policy_eval = self.policy_engine.evaluate_memory(text)
+            if policy_eval.is_violation:
+                status = "policy_violation"
+                analysis["policy_violation"] = policy_eval.reason
+                memory_id = str(uuid.uuid4())
+                self.security_db.add_memory(memory_id=memory_id, content=text, trust_score=trust_score, status=status, source=source, timestamp=timestamp)
+                return {"memory_id": memory_id, "status": status, "validation": analysis}
+
             memory_id = self.memory.add_memory(text=text, embedding=embedding, category="fact", source=source)
             self.security_db.add_memory(memory_id=memory_id, content=text, trust_score=trust_score, status=status, source=source, timestamp=timestamp)
             return {"memory_id": memory_id, "status": status, "validation": analysis}

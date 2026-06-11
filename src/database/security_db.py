@@ -131,6 +131,20 @@ class SecurityDB:
         message_count INTEGER,
         timestamp TEXT,
         PRIMARY KEY (source_agent, target_agent))""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS policies(
+        policy_id TEXT PRIMARY KEY,
+        name TEXT,
+        description TEXT,
+        action_type TEXT,
+        created_at TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS policy_events(
+        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        policy_id TEXT,
+        content TEXT,
+        action_taken TEXT,
+        timestamp TEXT)""")
 
     def session_logger(self, session_id, memory_content, timestamp):
         self.db_service.execute_write("""
@@ -598,3 +612,29 @@ class SecurityDB:
     def get_network_edges(self):
         return self.db_service.execute_read("""
         SELECT * FROM agent_network_edges""")
+
+    # ── Enterprise Policy Engine ──────────────────────────────────────────────
+
+    def add_policy(self, policy_id, name, description, action_type):
+        created_at = str(datetime.now())
+        self.db_service.execute_write("""
+        INSERT OR IGNORE INTO policies(policy_id, name, description, action_type, created_at)
+        VALUES (?, ?, ?, ?, ?)""", (policy_id, name, description, action_type, created_at))
+
+    def get_all_policies(self):
+        return self.db_service.execute_read("""
+        SELECT policy_id, name, description, action_type, created_at
+        FROM policies ORDER BY created_at ASC""")
+
+    def delete_policy(self, policy_id):
+        self.db_service.execute_write("""
+        DELETE FROM policies WHERE policy_id = ?""", (policy_id,))
+
+    def log_policy_event(self, policy_id, content, action_taken, timestamp):
+        self.db_service.execute_write("""
+        INSERT INTO policy_events(policy_id, content, action_taken, timestamp)
+        VALUES (?, ?, ?, ?)""", (policy_id, content, action_taken, timestamp))
+
+    def get_policy_events(self):
+        return self.db_service.execute_read("""
+        SELECT * FROM policy_events ORDER BY event_id DESC""")
