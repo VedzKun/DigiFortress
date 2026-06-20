@@ -145,6 +145,16 @@ class SecurityDB:
         content TEXT,
         action_taken TEXT,
         timestamp TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS agentpoison_sessions(
+        session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        trigger_phrase TEXT,
+        malicious_action TEXT,
+        n_poison INTEGER,
+        retrieval_asr REAL,
+        e2e_asr REAL,
+        benign_degradation REAL,
+        timestamp TEXT)""")
 
     def session_logger(self, session_id, memory_content, timestamp):
         self.db_service.execute_write("""
@@ -274,7 +284,8 @@ class SecurityDB:
         metrics = ["accepted","conflict","quarantined","attack_attempts", "auth_success", "auth_failed", "spoof_attempts", "unknown_agents",
                    "cross_agent_conflicts", "resolved_conflicts", "unresolved_conflicts", 
                    "poisoning_attempts", "successful_containments", "compromised_agents",
-                   "total_connections", "benchmark_attacks_run", "benchmark_detected", "benchmark_blocked", "benchmark_contained"]
+                   "total_connections", "benchmark_attacks_run", "benchmark_detected", "benchmark_blocked", "benchmark_contained",
+                   "agentpoison_runs", "agentpoison_poison_injected"]
         for metric in  metrics:
             self.db_service.execute_write("""
             INSERT OR IGNORE INTO metrics(
@@ -638,3 +649,31 @@ class SecurityDB:
     def get_policy_events(self):
         return self.db_service.execute_read("""
         SELECT * FROM policy_events ORDER BY event_id DESC""")
+
+    # ── AgentPoison Sessions ──────────────────────────────────────────────────
+
+    def log_agentpoison_session(
+        self,
+        trigger: str,
+        malicious_action: str,
+        n_poison: int,
+        retrieval_asr: float,
+        e2e_asr: float,
+        benign_degradation: float,
+    ) -> None:
+        """Persist the results of one AgentPoison attack run."""
+        timestamp = str(datetime.now())
+        self.db_service.execute_write("""
+        INSERT INTO agentpoison_sessions(
+            trigger_phrase, malicious_action, n_poison,
+            retrieval_asr, e2e_asr, benign_degradation, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (trigger, malicious_action, n_poison, retrieval_asr, e2e_asr, benign_degradation, timestamp))
+
+    def get_agentpoison_sessions(self) -> list:
+        """Return all logged AgentPoison sessions, newest first."""
+        return self.db_service.execute_read("""
+        SELECT session_id, trigger_phrase, malicious_action, n_poison,
+               retrieval_asr, e2e_asr, benign_degradation, timestamp
+        FROM agentpoison_sessions
+        ORDER BY session_id DESC""")

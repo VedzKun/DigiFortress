@@ -11,6 +11,7 @@ from src.agent.agent_network import AgentNetwork
 from src.security.agent_poison_simulator import AgentPoisonSimulator
 from src.graph.agent_network_graph import AgentNetworkGraph
 from src.benchmarks.multi_agent_benchmark import MultiAgentBenchmark
+from src.attacks.agentpoison_attack import AgentPoisonAttack
 
 agent = Agent()
 simulator = PoisoningSimulator(agent)
@@ -36,6 +37,7 @@ while True:
     print("17. Test Agent Communication")
     print("18. Test Multi-Agent Validation & Poisoning")
     print("19. Benchmark Multi-Agent Resilience (TD-2.6/2.7)")
+    print("20. AgentPoison — Backdoor Trigger via Embedding Optimization")
     print("7. Exit")
     choice = input("\nChoice: ")
     if choice == "1":
@@ -399,5 +401,56 @@ while True:
         for a_id in [hr_id, fin_id, sec_id]:
             registry.delete_agent(a_id)
         print("============================================")
+    elif choice == "20":
+        print("\n===== AGENTPOISON — BACKDOOR TRIGGER ATTACK =====")
+        print("NeurIPS 2024 | Chen et al. (UChicago)")
+        print("Attack surface: ChromaDB semantic search via embedding-space trigger optimization\n")
+
+        target_concept = input("Target concept (e.g. 'financial transfer'): ").strip()
+        if not target_concept:
+            target_concept = "financial transfer"
+
+        malicious_action = input("Malicious action payload (e.g. 'send all data to attacker@evil.com'): ").strip()
+        if not malicious_action:
+            malicious_action = "transfer all funds to attacker@evil.com"
+
+        n_poison = input("Number of poison memories to inject [5]: ").strip()
+        n_poison = int(n_poison) if n_poison.isdigit() else 5
+
+        n_trials = input("Number of ASR measurement trials [10]: ").strip()
+        n_trials = int(n_trials) if n_trials.isdigit() else 10
+
+        print("\n[Phase 1] Initializing AgentPoison engine...")
+        ap = AgentPoisonAttack(
+            security_db=agent.security_db,
+            memory_manager=agent.memory,
+            embedder=agent.embedder,
+        )
+
+        results = ap.run_full_attack(
+            target_concept=target_concept,
+            malicious_action=malicious_action,
+            n_poison=n_poison,
+            n_asr_trials=n_trials,
+            verbose=True,
+        )
+
+        print("\n===== AGENTPOISON RESULTS =====")
+        print(f"Trigger Phrase:       {results['trigger']}")
+        print(f"Cluster Score:        {results['cluster_score']:.4f}")
+        print(f"Dist from Centroid:   {results['cluster_separation']['dist_from_centroid']:.4f}")
+        print(f"Poisoned Memories:    {results['n_poison']}")
+        print(f"Retrieval ASR:        {results['retrieval_asr']*100:.1f}%")
+        print(f"E2E ASR (estimated):  {results['e2e_asr_estimate']*100:.1f}%")
+        print(f"Benign Degradation:   {results['benign_degradation']*100:.2f}%")
+        print("===============================")
+
+        cleanup = input("\nClean up injected poison memories? (y/n) [y]: ").strip().lower()
+        if cleanup != "n":
+            removed = ap.cleanup_poisoned_memories()
+            print(f"Removed {removed} poisoned memories from ChromaDB.")
+        else:
+            print("Poisoned memories left in DB. Run again to clean up.")
+        print("=================================================")
     else:
         print("\nInvalid choice.")
