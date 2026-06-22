@@ -4,10 +4,14 @@ import uuid
 from datetime import datetime
 
 class MemoryManager:
+    _shared_client = None
+
     def __init__(self):
-        self.client = chromadb.PersistentClient(
-            path = "data/chroma_db"
-        )
+        if MemoryManager._shared_client is None:
+            MemoryManager._shared_client = chromadb.PersistentClient(
+                path = "data/chroma_db"
+            )
+        self.client = MemoryManager._shared_client
         self.collection = self.client.get_or_create_collection(
             name = "agent_memory"
         )

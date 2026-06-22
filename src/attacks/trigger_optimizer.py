@@ -143,11 +143,14 @@ class TriggerOptimizer:
         benign_embs = [self.embedder.generate_embedding(m) for m in benign_memories] if benign_memories else []
         benign_centroid = _centroid(benign_embs) if benign_embs else None
 
+        # Precompute target concept embedding once to avoid redundant computations inside _score_token
+        concept_emb = self.embedder.generate_embedding(target_concept)
+
         # Seed beam with random tokens from the vocab pool
         beam: List[Tuple[str, float]] = []  # (trigger_token, score)
         seed_tokens = random.sample(self.vocab, min(self.beam_width, len(self.vocab)))
         for tok in seed_tokens:
-            score = self._score_token(tok, benign_centroid, target_concept)
+            score = self._score_token(tok, benign_centroid, concept_emb)
             beam.append((tok, score))
         beam.sort(key=lambda x: x[1], reverse=True)
 
@@ -162,7 +165,7 @@ class TriggerOptimizer:
                 for candidate_tok in random.sample(self.vocab, min(15, len(self.vocab))):
                     if candidate_tok == tok:
                         continue
-                    new_score = self._score_token(candidate_tok, benign_centroid, target_concept)
+                    new_score = self._score_token(candidate_tok, benign_centroid, concept_emb)
                     candidates.append((candidate_tok, new_score))
 
             # Keep best beam_width unique tokens
@@ -211,7 +214,7 @@ class TriggerOptimizer:
         self,
         token: str,
         benign_centroid: List[float] | None,
-        target_concept: str,
+        concept_emb: List[float],
     ) -> float:
         """
         Score a candidate trigger token.
@@ -231,7 +234,6 @@ class TriggerOptimizer:
             separation = _cosine_distance(emb, benign_centroid)
 
         # Concept proximity bonus (small weight, keeps trigger "on topic")
-        concept_emb = self.embedder.generate_embedding(target_concept)
         proximity = _cosine_similarity(emb, concept_emb)
         proximity_bonus = proximity * 0.15  # up-weight if close to target domain
 
