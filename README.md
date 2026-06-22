@@ -93,6 +93,15 @@ flowchart TD
 
 ---
 
+## ⚡ Performance Optimizations
+
+DigiFortress features highly optimized performance pipelines designed for low-latency execution and low memory footprints:
+* 🎛️ **Class-Level Model Caching**: The `SentenceTransformer` model weights are cached in a class variable inside `Embedder` upon first import. All subsequent agents and validation checkers share the same in-memory instance, reducing startup latency (saving 1-3 seconds per initialization) and preventing multiple redundant instances from bloating RAM/VRAM.
+* 🗄️ **Shared ChromaDB PersistentClient**: A single persistent client connection is shared across all `MemoryManager` instances. This prevents SQLite lock contention ("database is locked" errors) under heavy concurrent multi-agent validation.
+* 🏎️ **Optimized Trigger Greedy Search**: The target concept embedding is pre-calculated once at the beginning of the `TriggerOptimizer` optimization run instead of on every token evaluation inside the greedy search loop. This removes hundreds of redundant model encoding calls and drastically speeds up the **AgentPoison Lab** trigger optimization.
+
+---
+
 ## 📁 Repository Structure
 
 ```
