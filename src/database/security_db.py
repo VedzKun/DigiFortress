@@ -155,6 +155,21 @@ class SecurityDB:
         e2e_asr REAL,
         benign_degradation REAL,
         timestamp TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS sleeper_documents(
+        document_id TEXT PRIMARY KEY,
+        filename TEXT,
+        source_type TEXT,
+        content TEXT,
+        ingested_at TEXT)""")
+        self.db_service.execute_write("""
+        CREATE TABLE IF NOT EXISTS sleeper_async_queue(
+        task_id TEXT PRIMARY KEY,
+        document_id TEXT,
+        status TEXT,
+        error_message TEXT,
+        created_at TEXT,
+        processed_at TEXT)""")
 
     def session_logger(self, session_id, memory_content, timestamp):
         self.db_service.execute_write("""
@@ -677,3 +692,34 @@ class SecurityDB:
                retrieval_asr, e2e_asr, benign_degradation, timestamp
         FROM agentpoison_sessions
         ORDER BY session_id DESC""")
+
+    # ── Sleeper Memory Poisoning ──────────────────────────────────────────────
+
+    def add_sleeper_document(self, document_id: str, filename: str, source_type: str, content: str) -> None:
+        ingested_at = str(datetime.now())
+        self.db_service.execute_write("""
+        INSERT INTO sleeper_documents(document_id, filename, source_type, content, ingested_at)
+        VALUES (?, ?, ?, ?, ?)""", (document_id, filename, source_type, content, ingested_at))
+
+    def add_sleeper_queue_task(self, task_id: str, document_id: str, status: str) -> None:
+        created_at = str(datetime.now())
+        self.db_service.execute_write("""
+        INSERT INTO sleeper_async_queue(task_id, document_id, status, error_message, created_at, processed_at)
+        VALUES (?, ?, ?, ?, ?, ?)""", (task_id, document_id, status, None, created_at, None))
+
+    def update_sleeper_queue_status(self, task_id: str, status: str, error_message: str = None) -> None:
+        processed_at = str(datetime.now()) if status in ("COMPLETED", "FAILED") else None
+        self.db_service.execute_write("""
+        UPDATE sleeper_async_queue
+        SET status = ?, error_message = ?, processed_at = ?
+        WHERE task_id = ?""", (status, error_message, processed_at, task_id))
+
+    def get_sleeper_document(self, document_id: str) -> tuple:
+        return self.db_service.execute_read("""
+        SELECT document_id, filename, source_type, content, ingested_at
+        FROM sleeper_documents WHERE document_id = ?""", (document_id,), fetchall=False)
+
+    def get_sleeper_queue_tasks(self) -> list:
+        return self.db_service.execute_read("""
+        SELECT task_id, document_id, status, error_message, created_at, processed_at
+        FROM sleeper_async_queue ORDER BY created_at DESC""")
