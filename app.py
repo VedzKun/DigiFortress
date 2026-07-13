@@ -228,6 +228,11 @@ if st.sidebar.button("Erase Databases"):
     except Exception as e:
         st.sidebar.error(f"Error erasing: {e}")
 
+st.sidebar.markdown("---")
+st.sidebar.markdown("### System Info")
+st.sidebar.markdown("🟢 Status: Operational")
+st.sidebar.markdown(f"🕒 Last updated: {datetime.now().strftime('%H:%M:%S')}")
+
 # Helper: Fetch all metrics for dashboard
 def get_security_metrics():
     metrics = agent.security_db.get_all_metrics()
